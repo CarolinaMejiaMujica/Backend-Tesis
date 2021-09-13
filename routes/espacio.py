@@ -8,23 +8,39 @@ from bokeh.plotting import figure
 from bokeh.models import CategoricalColorMapper
 from bokeh.models.tools import TapTool
 from bokeh.models.callbacks import CustomJS
-
+from typing import List
 
 espacio = APIRouter()
 
 @espacio.post("/mapa/")
-def grafico(fechaIni: str,fechaFin: str):
+def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
+    result = tuple(deps)
+
     df_departamentos=pd.DataFrame(conn.execute(departamentos.select()).fetchall())
     df_departamentos.columns=['ID', 'Nombre', 'latitud', 'longitud']
 
-    df_dep=pd.DataFrame(conn.execute(f"select count(s.id_secuencia) AS count, d.nombre from departamentos as d "+
+    if len(result) == 1:
+        valor=result[0]
+        df_dep=pd.DataFrame(conn.execute(f"select count(s.id_secuencia) AS count, d.nombre from departamentos as d "+
+                                "LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
+                                "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
+                                "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
+                                "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
+                                "where m.nombre like 'k-means' and m.parametro=10 and "+
+                                "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<=\'"+ fechaFin +"\' "+
+                                "and d.nombre in (\'"+ str(valor)+
+                                "\') group by d.nombre order by d.nombre").fetchall())
+    else:
+        df_dep=pd.DataFrame(conn.execute(f"select count(s.id_secuencia) AS count, d.nombre from departamentos as d "+
                                  "LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
                                  "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
                                  "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
                                  "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
                                  "where m.nombre like 'k-means' and m.parametro=10 and "+
                                  "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<=\'"+ fechaFin +"\' "+
-                                 "group by d.nombre order by d.nombre").fetchall())
+                                 "and d.nombre in "+ str(result)+
+                                 " group by d.nombre order by d.nombre").fetchall())
+
     df_dep.columns=['count','Nombre']
     df_departamentos=df_departamentos.merge(df_dep, how='left', on='Nombre')
     df_departamentos["variantes"] = "a"
@@ -32,13 +48,26 @@ def grafico(fechaIni: str,fechaFin: str):
     df_departamentos['color']="a"
     df_departamentos.loc[df_departamentos['count'].isnull(),'count']=0
 
-    df_vari=pd.DataFrame(conn.execute(f"SELECT d.nombre, COALESCE(v.id_variante,0) as id_variante, count(a.*), CONCAT(COALESCE(v.nomenclatura,''), ' - ', v.nombre) as nombre_variante, "+
-                                  "v.color from departamentos as d LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
-                                  "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
-                                  "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-                                  "where m.nombre like 'k-means' and m.parametro=10 and "+
-                                 "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<=\'"+ fechaFin +"\' "+
-                                  "GROUP BY d.nombre,v.id_variante ORDER BY d.nombre ASC").fetchall())
+    if len(result) == 1:
+        valor=result[0]
+        df_vari=pd.DataFrame(conn.execute(f"SELECT d.nombre, COALESCE(v.id_variante,0) as id_variante, count(a.*), CONCAT(COALESCE(v.nomenclatura,''), ' - ', v.nombre) as nombre_variante, "+
+                                "v.color from departamentos as d LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
+                                "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
+                                "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
+                                "where m.nombre like 'k-means' and m.parametro=10 and "+
+                                "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<=\'"+ fechaFin +"\' "+
+                                "and d.nombre in (\'"+ str(valor)+
+                                "\') GROUP BY d.nombre,v.id_variante ORDER BY d.nombre ASC").fetchall())
+    else:
+        df_vari=pd.DataFrame(conn.execute(f"SELECT d.nombre, COALESCE(v.id_variante,0) as id_variante, count(a.*), CONCAT(COALESCE(v.nomenclatura,''), ' - ', v.nombre) as nombre_variante, "+
+                                "v.color from departamentos as d LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
+                                "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
+                                "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
+                                "where m.nombre like 'k-means' and m.parametro=10 and "+
+                                "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<=\'"+ fechaFin +"\' "+
+                                "and d.nombre in "+ str(result)+
+                                " GROUP BY d.nombre,v.id_variante ORDER BY d.nombre ASC").fetchall())
+
     df_vari.columns=['Nombre','id_variante','count_variante','nombre_variante','color']
     lista=set(df_vari['Nombre'])
 
@@ -59,8 +88,6 @@ def grafico(fechaIni: str,fechaFin: str):
             df_departamentos['variantes'].iloc[i]='No hay datos'
             df_departamentos['variante'].iloc[i]='No hay datos'
             df_departamentos['color'].iloc[i]='#CDCDCD'
-
-
 
     cjs = """
     console.log('Tap');
@@ -102,8 +129,12 @@ def grafico(fechaIni: str,fechaFin: str):
     return json.dumps(json_item(fig, "mapa"))
 
 @espacio.post("/tablaespacio/")
-def grafico(fechaIni: str,fechaFin: str):
-    return conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, v.nomenclatura as nomenclatura,v.nombre as variante "+
+def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
+    result = tuple(deps)
+    print(result)
+    if len(result) == 1:
+        valor=result[0]
+        return conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, v.nomenclatura as nomenclatura,v.nombre as variante "+
                         "from departamentos as d "+
                         "LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
                         "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
@@ -111,4 +142,16 @@ def grafico(fechaIni: str,fechaFin: str):
                         "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
                         "where m.nombre like 'k-means' and m.parametro=10 and "+
                         "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<= \'"+ fechaFin +"\' "+
-                        "ORDER BY d.nombre ASC").fetchall()
+                        "and d.nombre in (\'"+ str(valor)+
+                        "\') ORDER BY d.nombre ASC").fetchall()
+    else:
+        return conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, v.nomenclatura as nomenclatura,v.nombre as variante "+
+                        "from departamentos as d "+
+                        "LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
+                        "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
+                        "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
+                        "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
+                        "where m.nombre like 'k-means' and m.parametro=10 and "+
+                        "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<= \'"+ fechaFin +"\' "+
+                        "and d.nombre in "+ str(result)+
+                        " ORDER BY d.nombre ASC").fetchall()

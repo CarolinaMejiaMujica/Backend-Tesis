@@ -8,22 +8,39 @@ from bokeh.models import DatetimeTickFormatter
 from bokeh.models import HoverTool
 from math import pi
 from bokeh.transform import cumsum
+from typing import List
 
 tiempo = APIRouter()
 
-def data_secuencias(ini,fin):
-    df_secu=pd.DataFrame(conn.execute(f"select count(s.id_secuencia),s.fecha_recoleccion, v.nomenclatura as variante, v.color from secuencias as s "+
-            "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
+def data_secuencias(ini,fin,deps):
+    if len(deps) == 1:
+        valor=deps[0]
+        df_secu=pd.DataFrame(conn.execute(f"select count(s.id_secuencia),s.fecha_recoleccion, v.nomenclatura as variante, v.color from secuencias as s "+
+            "LEFT JOIN departamentos as d ON s.id_departamento=d.id_departamento "+
+            "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
+            "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
             "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
             "where m.nombre like 'k-means' and m.parametro=10 and "+
             "s.fecha_recoleccion >= \'"+ ini +"\' and s.fecha_recoleccion<= \'"+ fin +
-            "\' group by s.fecha_recoleccion, v.nomenclatura,v.color order by s.fecha_recoleccion").fetchall())
+            "\' and d.nombre in (\'"+ str(valor)+
+            "\') group by s.fecha_recoleccion, v.nomenclatura,v.color order by s.fecha_recoleccion").fetchall())
+    else:
+        df_secu=pd.DataFrame(conn.execute(f"select count(s.id_secuencia),s.fecha_recoleccion, v.nomenclatura as variante, v.color from secuencias as s "+
+                "LEFT JOIN departamentos as d ON s.id_departamento=d.id_departamento "+
+                "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
+                "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
+                "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
+                "where m.nombre like 'k-means' and m.parametro=10 and "+
+                "s.fecha_recoleccion >= \'"+ ini +"\' and s.fecha_recoleccion<= \'"+ fin +
+                "\' and d.nombre in "+ str(deps)+
+                " group by s.fecha_recoleccion, v.nomenclatura,v.color order by s.fecha_recoleccion").fetchall())
     df_secu.columns=['count','fecha','variante','color']
     return df_secu
 
 @tiempo.post("/graficolineal/")
-def grafico(fechaIni: str,fechaFin: str):
-    df_secu=data_secuencias(fechaIni,fechaFin)
+def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
+    result = tuple(deps)
+    df_secu=data_secuencias(fechaIni,fechaFin,result)
     fechas=list(set(df_secu['fecha']))
     variant=list(set(df_secu['variante']))
     for v in variant:
@@ -70,16 +87,17 @@ def grafico(fechaIni: str,fechaFin: str):
 
 
 @tiempo.post("/graficocircular/")
-def grafico(fechaIni: str,fechaFin: str):
-    df_secu=data_secuencias(fechaIni,fechaFin)
+def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
+    result = tuple(deps)
+    df_secu=data_secuencias(fechaIni,fechaFin,result)
     data=pd.DataFrame(df_secu.groupby(by=["variante","color"]).sum()[["count"]])
     data.rename(columns={"variante":"variante","color":"color","count":"count"})
     data=data.reset_index()
     data['angulo'] = data['count']/data['count'].sum()*2*pi
-    data['pocentaje'] = round(data['count']/data['count'].sum()*100,2)
+    data['porcentaje'] = round(data['count']/data['count'].sum()*100,2)
 
     p = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save",plot_width=700, plot_height=600,
-            tooltips=[("Variante","@variante"),("Porcentaje","@pocentaje{1.11} %"), ("Cantidad","@count")])
+            tooltips=[("Variante","@variante"),("Porcentaje","@porcentaje{1.11} %"), ("Cantidad","@count")])
 
     p.wedge(x=0, y=1, radius=0.8,
             start_angle=cumsum('angulo', include_zero=True), end_angle=cumsum('angulo'),
