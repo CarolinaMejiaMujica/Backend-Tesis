@@ -131,7 +131,6 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
 @espacio.post("/tablaespacio/")
 def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
     result = tuple(deps)
-    print(result)
     if len(result) == 1:
         valor=result[0]
         return conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, v.nomenclatura as nomenclatura,v.nombre as variante "+
