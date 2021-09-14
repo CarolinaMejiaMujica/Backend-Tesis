@@ -14,6 +14,8 @@ espacio = APIRouter()
 
 @espacio.post("/mapa/")
 def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
+    if 'Todos' in deps:
+        deps.remove('Todos')
     result = tuple(deps)
 
     df_departamentos=pd.DataFrame(conn.execute(departamentos.select()).fetchall())
@@ -130,6 +132,8 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
 
 @espacio.post("/tablaespacio/")
 def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
+    if 'Todos' in deps:
+        deps.remove('Todos')
     result = tuple(deps)
     if len(result) == 1:
         valor=result[0]

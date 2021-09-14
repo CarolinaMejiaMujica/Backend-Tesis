@@ -39,6 +39,8 @@ def data_secuencias(ini,fin,deps):
 
 @tiempo.post("/graficolineal/")
 def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
+    if 'Todos' in deps:
+        deps.remove('Todos')
     result = tuple(deps)
     df_secu=data_secuencias(fechaIni,fechaFin,result)
     fechas=list(set(df_secu['fecha']))
@@ -88,6 +90,8 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
 
 @tiempo.post("/graficocircular/")
 def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
+    if 'Todos' in deps:
+        deps.remove('Todos')
     result = tuple(deps)
     df_secu=data_secuencias(fechaIni,fechaFin,result)
     data=pd.DataFrame(df_secu.groupby(by=["variante","color"]).sum()[["count"]])
