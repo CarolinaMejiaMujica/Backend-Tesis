@@ -78,7 +78,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
 
     #####################################
 
-    p = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save",plot_width=1450, plot_height=500, x_axis_type="datetime")
+    p = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save",plot_width=1450, plot_height=700, x_axis_type="datetime")
 
     hover=HoverTool(tooltips=[('Fecha de recolección', '@fecha{%d-%m-%Y}'),
                             ("Cantidad de secuencias genómicas","@count"),
@@ -113,6 +113,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
 
     p.legend.location = "top_left"
     p.legend.title = 'Variantes'
+    p.legend.orientation = "horizontal"
     p.legend.title_text_font_style = "bold"
     p.legend.title_text_font_size = "15px"
     p.legend.label_text_font_size = '11pt'
