@@ -9,6 +9,7 @@ from bokeh.models import HoverTool
 from math import pi
 from bokeh.transform import cumsum
 from typing import List
+import numpy as np
 
 tiempo = APIRouter()
 
@@ -44,16 +45,38 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
     result = tuple(deps)
     df_secu=data_secuencias(fechaIni,fechaFin,result)
     fechas=list(set(df_secu['fecha']))
-    variant=list(set(df_secu['variante']))
-    for v in variant:
+    variantes=list(set(df_secu['variante']))
+    colores=list()
+    for v in variantes:
         fechas_variante=list(set(df_secu.loc[df_secu['variante']==v]['fecha']))
+        colores.append(list(df_secu.color.loc[df_secu['variante']==v])[0])
         for m in fechas:
             if m not in fechas_variante:
                 df_secu=df_secu.append(pd.Series([0, m, v,df_secu.loc[df_secu['variante']==v]['color'].iloc[0]], index=df_secu.columns),ignore_index=True)
 
-    colores=list()
-    for a in list(set(df_secu['variante'])):
-        colores.append(list(df_secu.color.loc[df_secu['variante']==a])[0])
+    ####Nueva versión############
+    df_secu['fecha'] = pd.to_datetime(df_secu['fecha'])
+
+    df_secuencias = pd.DataFrame()
+    for name,color in zip(variantes,colores):
+        df_variante = pd.DataFrame(df_secu.loc[df_secu['variante']==name].sort_values('fecha')).reset_index(drop=True)
+        df_variante = df_variante.set_index('fecha') 
+        if variantes[0] == name:
+            df_secuencias['count'] = df_variante['count'].resample('W-MON').sum()
+            df_secuencias['count_sum'] = df_variante['count'].resample('W-MON').sum()
+            df_secuencias['variante']=name
+            df_secuencias['color']=df_variante.loc[df_variante['variante']==name]['color'].iloc[0]
+            df_secuencias.reset_index(inplace=True, drop=False)
+        else:
+            df=pd.DataFrame()
+            df['count'] = df_variante['count'].resample('W-MON').sum()
+            df['count_sum'] = df_variante['count'].resample('W-MON').sum()
+            df['variante']=name
+            df['color']=df_variante.loc[df_variante['variante']==name]['color'].iloc[0]
+            df.reset_index(inplace=True, drop=False)
+            df_secuencias = pd.concat([df_secuencias, df])
+
+    #####################################
 
     p = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save",plot_width=1450, plot_height=500, x_axis_type="datetime")
 
@@ -63,10 +86,30 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                             ("Color","$variante $swatch:color")],formatters={'@fecha': 'datetime'})
     p.add_tools(hover)
 
-    for name,color in zip(variant,colores):
-        df = pd.DataFrame(df_secu.loc[df_secu['variante']==name].sort_values('fecha')).reset_index(drop=True)
-        p.line('fecha','count',source=df, line_width=2, color=color, alpha=0.8,
-            muted_color=color, muted_alpha=0.2, legend_label=name)
+    #for name,color in zip(variantes,colores):
+    #    df = pd.DataFrame(df_secu.loc[df_secu['variante']==name].sort_values('fecha')).reset_index(drop=True)
+    #    p.line('fecha','count',source=df, line_width=2, color=color, alpha=0.8,
+    #        muted_color=color, muted_alpha=0.2, legend_label=name)
+
+    count=0
+    temporal=pd.DataFrame()
+    temporal['count_sum']=0
+    for name,color in zip(variantes,colores):
+        df = pd.DataFrame(df_secuencias.loc[df_secuencias['variante']==name].sort_values('fecha')).reset_index(drop=True)
+        if count == 0:
+            #guardar en un temporal
+            temporal['count_sum']=df['count']
+            #guardar en el principal
+            df['count_sum']=temporal['count_sum']
+            count=count+1
+        else:
+            #sumar el count con count_sum
+            temporal['count_sum']=np.array(temporal['count_sum'])+np.array(df['count'])
+            #actualizar el count_sum
+            df['count_sum']=temporal['count_sum']
+            count=count+1
+        p.line('fecha','count_sum',source=df, line_width=2, color=color, alpha=0.8,
+                muted_color=color, muted_alpha=0.2, legend_label=name)
 
     p.legend.location = "top_left"
     p.legend.title = 'Variantes'
@@ -74,7 +117,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
     p.legend.title_text_font_size = "15px"
     p.legend.label_text_font_size = '11pt'
     p.legend.click_policy = "hide"
-    p.xaxis.axis_label = "Mes-Año"
+    p.xaxis.axis_label = "Día-Mes-Año"
     p.yaxis.axis_label="Número de secuencias genómicas"
     p.xaxis.axis_label_text_font_style = "bold"
     p.yaxis.axis_label_text_font_style = "bold"
