@@ -11,7 +11,7 @@ from sqlalchemy.engine.url import URL
 
 driver='postgresql'
 
-url = URL(driver, 'postgres', 'carolina19620', 'instanciatesis.ci9voqbe9ybk.us-east-1.rds.amazonaws.com', '5432', 'BDTesis')
+url = URL(driver, 'postgres', 'carolina19620', 'instanciatesis.cjfczpppafxb.us-east-1.rds.amazonaws.com', '5432', 'BDTesis')
 
 
 engine = create_engine(url)
