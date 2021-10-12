@@ -1,5 +1,6 @@
 from bokeh.core.property.primitive import Null
 from fastapi import APIRouter
+import numpy as np
 from config.db import conn
 import json
 import pandas as pd
@@ -15,6 +16,8 @@ import scipy.cluster.hierarchy as shc
 import matplotlib.pyplot as plt
 import base64
 from io import BytesIO
+from collections import defaultdict
+from scipy.cluster.hierarchy import dendrogram, linkage
 
 agrupamiento = APIRouter()
 
@@ -53,21 +56,33 @@ def data_secuencias(ini,fin,deps,algoritmo,parametro):
     else:
         df_secu.columns=['codigo','fecha', 'departamento', 'variante','color','cluster']
         #Recuperar archivo pca de BD
-        archiv=conn.execute(f"select pca from archivos where pca is not null;").fetchall()
+        archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=3;").fetchall()
         X_pca = pickle.loads(archiv[0][0])
         df_secu['x']=X_pca[0:len(df_secu),0]
         df_secu['y']=X_pca[0:len(df_secu),1]
         return df_secu
 
+def merge_dict(d1, d2):
+    dd = defaultdict(list)
+
+    for d in (d1, d2):
+        for key, value in d.items():
+            if isinstance(value, list):
+                dd[key].extend(value)
+            else:
+                dd[key].append(value)
+    return dict(dd)
+
 #KMEANS
 @agrupamiento.post("/graficokmeans/")
-def graficokmeans(fechaIni: str,fechaFin: str,deps: List[str],parametro: int):
+def graficokmeans(fechaIni: str,fechaFin: str,parametro: int,deps: List[str]):
     nombre_algoritmo="'k-means'"
     if len(deps)==25:
         deps=todos
     elif 'Todos' in deps:
         deps=todos
     result = tuple(deps)
+
     df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
     if str(df_secu) == 'No hay datos':
         return 'No hay datos'
@@ -102,7 +117,9 @@ def graficokmeans(fechaIni: str,fechaFin: str,deps: List[str],parametro: int):
         for w in [valorK]:
             w.on_change('value', actualizar_grafico)
         grafico_kmeans = pn.pane.Bokeh(column(valorK, plot))
-        return json.dumps(json_item(plot, "graficokmeans"))
+
+        tabla= tablaagrupamiento(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
+        return json.dumps(json_item(plot, "graficokmeans")),tabla
 
 
 @agrupamiento.post("/graficojerarquico/")
@@ -125,7 +142,7 @@ def graficojerarquico(fechaIni: str,fechaFin: str,deps: List[str],parametro: int
                 ("Fecha de recolección","@fecha{%d-%m-%Y}"),
                 ("Variante predominante","@variante"),
                 ("Color", "$variante $swatch:color")],formatters={'@fecha': 'datetime'})
-        plot = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save,box_zoom", plot_width=800, plot_height=500)
+        plot = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save,box_zoom", plot_width=700, plot_height=500)
         plot.add_tools(hover)
         plot.xaxis.axis_label = '1er componente PCA'
         plot.yaxis.axis_label = '2do componente PCA'
@@ -148,11 +165,12 @@ def graficojerarquico(fechaIni: str,fechaFin: str,deps: List[str],parametro: int
             w.on_change('value', actualizar_grafico)
         grafico_jerarquico = pn.pane.Bokeh(column(c_cluster, plot))
 
-        return json.dumps(json_item(plot, "graficojerarquico"))
+        tabla= tablaagrupamiento(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
+        return json.dumps(json_item(plot, "graficojerarquico")),tabla
 
 #DENDROGRAMA
 def obtenermatrizdistancia(fechaIni,fechaFin,deps):
-    archiv=conn.execute(f"select estandarizada from archivos where estandarizada is not null;").fetchall()
+    archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=1;").fetchall()
     if archiv == Null:
         return 'No hay datos'
     else:
@@ -170,10 +188,13 @@ def dendrograma(fechaIni: str,fechaFin: str,deps: List[str]):
     if str(matriz_distancias) == 'No hay datos':
         return 'No hay datos'
     else:
+        df1=pd.DataFrame(matriz_distancias)
+        Z = linkage(df1, 'ward')
         plt.figure(figsize=(10, 5))
-        dend = shc.dendrogram(shc.linkage(matriz_distancias, method='ward'))
         plt.xlabel('Índices')
         plt.ylabel('Distancia (Ward)')
+        dendrogram(Z, labels=df1.index, leaf_rotation=90)
+        
 
         fig = plt.figure()
         tmpfile = BytesIO()
@@ -252,7 +273,7 @@ def tablaagrupamiento(fechaIni: str,fechaFin: str,deps: List[str],algoritmo: str
             "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
             "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
             "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-            "where m.nombre like \'"+algoritmo +"\' and m.parametro="+str(parametro)+
+            "where m.nombre like "+algoritmo +" and m.parametro="+str(parametro)+
             " and s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<= \'"+ fechaFin +"\' "+
             "and d.nombre in (\'"+ str(valor)+
             "\') ORDER BY d.nombre ASC").fetchall()
@@ -264,7 +285,7 @@ def tablaagrupamiento(fechaIni: str,fechaFin: str,deps: List[str],algoritmo: str
             "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
             "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
             "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-            "where m.nombre like \'"+algoritmo +"\' and m.parametro="+str(parametro)+
+            "where m.nombre like "+algoritmo +" and m.parametro="+str(parametro)+
             " and s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<= \'"+ fechaFin +"\' "+
             "and d.nombre in "+ str(result)+
             " ORDER BY d.nombre ASC").fetchall()
