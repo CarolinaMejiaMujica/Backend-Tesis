@@ -50,6 +50,8 @@ def data_secuencias(ini,fin,deps):
 
 @tiempo.post("/graficolineal/")
 def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
+    
+    print(fechaIni,fechaFin)
     if len(deps)==25:
         deps=todos
     elif 'Todos' in deps:

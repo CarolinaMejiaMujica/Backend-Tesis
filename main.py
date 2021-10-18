@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.index import tiempo
 from routes.index import espacio
-from routes.agrupamiento import agrupamiento
+from routes.index import agrupamiento
+from routes.index import online
 
 app = FastAPI(tittle='Herramienta analítica interactiva', description='Proyecto de Tesis',version='1.0.2')
 
@@ -25,3 +26,4 @@ app.add_middleware(
 app.include_router(espacio)
 app.include_router(tiempo)
 app.include_router(agrupamiento)
+app.include_router(online)
