@@ -9,5 +9,6 @@ secuencias = Table(
     Column('secuencia',Text),
     Column('fecha_recoleccion',Date),
     Column('secuencia_alineada',Text),
-    Column('id_departamento',Integer)
+    Column('id_departamento',Integer),
+    Column('linaje_pango',Integer)
 )

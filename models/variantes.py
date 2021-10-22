@@ -9,6 +9,5 @@ variantes= Table(
     Column('linaje_pango',ARRAY(Text)),
     Column('sustituciones_spike',ARRAY(Text)),
     Column('nombre',String(20)),
-    Column('secuencia',String(3000)).
     Column('color',String(10))
 )

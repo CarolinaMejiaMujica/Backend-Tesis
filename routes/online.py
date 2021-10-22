@@ -42,7 +42,7 @@ diccionario = {'AMA' : 'Amazonas','ANC' : 'Áncash','APU' : 'Apurímac','ARE' : 
                'TAC' : 'Tacna','TUM' : 'Tumbes','UCA' : 'Ucayali',
                'CAL' : 'Callao', 'C01' : 'Callao', 'C02': 'Callao','C03': 'Callao'}
 
-def ham(seq1,seq2):
+'''def ham(seq1,seq2):
     return hamming(seq1,seq2)
 
 def obtenerDatos(registros):
@@ -323,4 +323,4 @@ async def subir_varios_archivos(valor: Int,archivos: List[UploadFile] = File(...
 def eliminarSecuencias(ids: List[str]):
     cur.execute(b"DELETE FROM agrupamiento WHERE id_secuencia " + ids)
     conexion.commit()
-    return JSONResponse(content={"eliminar": True},status_code=200)
+    return JSONResponse(content={"eliminar": True},status_code=200)'''

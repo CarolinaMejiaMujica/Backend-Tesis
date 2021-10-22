@@ -26,4 +26,4 @@ app.add_middleware(
 app.include_router(espacio)
 app.include_router(tiempo)
 app.include_router(agrupamiento)
-app.include_router(online)
+#app.include_router(online)
