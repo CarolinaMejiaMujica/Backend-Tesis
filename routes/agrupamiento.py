@@ -120,7 +120,7 @@ def graficokmeans(fechaIni: str,fechaFin: str,parametro: int,deps: List[str]):
         return 'No hay datos'
     else:        
         #Recuperar los datos
-        df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
+        #df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
 
         # Grafico K-means
         MARKERS = ['circle','diamond','triangle','plus','square','star','square_pin','hex','asterisk','cross']
@@ -176,40 +176,55 @@ def graficojerarquico(fechaIni: str,fechaFin: str,deps: List[str],parametro: int
     elif 'Todos' in deps:
         deps=todos
     result = tuple(deps)
+
     df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
     if str(df_secu) == 'No hay datos':
         return 'No hay datos'
     else:
         #Recuperar los datos      
-        df_agrupamiento=pd.DataFrame(df_secu[['codigo','fecha', 'departamento', 'variante','color','x','y']])
+        #df_agrupamiento=pd.DataFrame(df_secu[['codigo','fecha', 'departamento', 'variante','color','x','y']])
+        
         # Grafico jerárquico
+        MARKERS = ['circle','diamond','triangle','plus','square','star','square_pin','hex','asterisk','cross']
+        marcadores=MARKERS[:len(df_secu['variante'].unique())]
+
         hover=HoverTool(tooltips=[("Identificador", "@codigo"),
                 ("Departamento", "@departamento"),
                 ("Fecha de recolección","@fecha{%d-%m-%Y}"),
-                ("Variante predominante","@variante"),
-                ("Color", "$variante $swatch:color")],formatters={'@fecha': 'datetime'})
+                ("Variante de la secuencia","@variante"),
+                ("Variante predominante del grupo","@variante_predominante"),
+                ("Color del grupo", "$leyenda $swatch:color")],formatters={'@fecha': 'datetime'})
         plot = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save,box_zoom", plot_width=700, plot_height=500)
         plot.add_tools(hover)
         plot.xaxis.axis_label = '1er componente PCA'
         plot.yaxis.axis_label = '2do componente PCA'
-        plot.add_layout(Legend(), 'right')
-        plot.scatter(x = 'x', y = 'y', color='color',legend_group='variante',source=df_agrupamiento)
-        plot.legend.location = "top_right"
-        plot.legend.title = 'Variantes'
-        plot.legend.title_text_font_style = "bold"
-        plot.legend.title_text_font_size = "15px"
-        plot.legend.label_text_font_size = '11pt'
-        #Cantidad de clusters
-        c_cluster = Slider(title="Cantidad de clusters", value=parametro, start=1, end=10, max_width=700)
-        def actualizar_grafico(attrname, old, new):
-            #Recuperar los datos
-            df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,c_cluster.value)
-            df_agrupamiento=pd.DataFrame(df_secu[['codigo','fecha', 'departamento', 'variante','color','x','y']])
-            plot.scatter(x = 'x', y = 'y', color='color', source=df_agrupamiento)
+        r=plot.scatter(x = 'x', y = 'y',size=10,line_color = 'grey',source=df_secu,marker=factor_mark('variante', marcadores, df_secu['variante'].unique()),color='color')
 
-        for w in [c_cluster]:
-            w.on_change('value', actualizar_grafico)
-        grafico_jerarquico = pn.pane.Bokeh(column(c_cluster, plot))
+        plot.x_range.renderers = [r]
+        plot.y_range.renderers = [r]
+
+        #Grupos
+        rc = plot.rect(x=0, y=0, height=1, width=1, color=tuple(df_secu['color'].unique()))
+        rc.visible = False
+        #Grupos
+        legend1 = Legend(items=[
+            LegendItem(label=df_secu['leyenda'].unique()[i], renderers=[rc], index=i) for i, c in enumerate(df_secu['color'].unique())
+        ], location="top_right",title='Grupo - Variante predominante')
+        plot.add_layout(legend1, 'right')
+
+        #Variantes
+        rs = plot.scatter(x=0, y=0, color="grey", marker=marcadores)
+        rs.visible = False
+        #Variantes
+        legend = Legend(items=[
+            LegendItem(label=df_secu['variante'].unique()[i], renderers=[rs], index=i) for i, s in enumerate(marcadores)
+        ], location='center',orientation="horizontal",title = 'Variantes')
+        plot.add_layout(legend, 'above')
+
+        plot.legend.label_text_font_style="normal"
+        plot.legend.title_text_font_style = "bold"
+        plot.legend.title_text_font_size = "13px"
+        plot.legend.label_text_font_size = "10pt"
 
         tabla= tablaagrupamiento(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
         return json.dumps(json_item(plot, "graficojerarquico")),tabla
