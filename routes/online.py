@@ -316,11 +316,55 @@ async def subir_varios_archivos(valor: Int,archivos: List[UploadFile] = File(...
 
         return JSONResponse(content={"upload_files": True},status_code=200)
     except FileNotFoundError:
+        return JSONResponse(content={"upload_files": False},status_code=404)'''
+
+@online.post("/online/")
+async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File(...)):
+    try:
+        for arc in archivos:
+            with open(arc.filename, "wb") as buffer:
+                shutil.copyfileobj(arc.file, buffer)
+        if "fasta" in archivos[0].filename:
+            nombreFasta=archivos[0].filename
+        elif "fasta" in archivos[1].filename:
+            nombreFasta=archivos[1].filename
+        if "tsv" in archivos[0].filename:
+            nombreTsv=archivos[0].filename
+        elif "tsv" in archivos[1].filename:
+            nombreTsv=archivos[1].filename
+        registros = list(SeqIO.parse(nombreFasta, "fasta"))
+        print(len(registros))
+        df_info = pd.read_csv(nombreTsv,sep='\t')
+        print(parametro)
+        if parametro==0:
+            #sin agrupamiento
+            pass
+        else:
+            #realizar el agrupamiento de nuevo
+            pass
+        return JSONResponse(content={"archivo 1": archivos[0].filename,"archivo 2:":archivos[1].filename },status_code=200)
+    except FileNotFoundError:
         return JSONResponse(content={"upload_files": False},status_code=404)
 
-
 @online.post("/eliminar/")
-def eliminarSecuencias(ids: List[str]):
-    cur.execute(b"DELETE FROM agrupamiento WHERE id_secuencia " + ids)
-    conexion.commit()
-    return JSONResponse(content={"eliminar": True},status_code=200)'''
+def eliminarSecuencias(codigos: List[str]):
+    try:
+        valores=conn.execute(f"select a.id_agrupamiento FROM agrupamiento as a LEFT JOIN secuencias as s ON a.id_secuencia=s.id_secuencia WHERE s.codigo in " + str(tuple(codigos))).fetchall()
+        ids=list(list(zip(*valores))[0])
+        args_ids = b','.join(cur.mogrify("%s", (x,)) for x in ids)
+        args_str = b','.join(cur.mogrify("%s", (x,)) for x in codigos)
+        #cur.execute(b"DELETE FROM secuencias WHERE codigo = " + args_str)
+        #conexion.commit()
+        #cur.execute(b"DELETE FROM agrupamiento WHERE id_agrupamiento = " + args_ids)
+        #conexion.commit()
+        table=tabla()
+        return True,table
+    except:
+        return False
+
+@online.post("/tabla/")
+def tabla():
+    return conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, s.linaje_pango as nomenclatura,s.id_secuencia as variante "+
+                        "from departamentos as d "+
+                        "LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
+                        "ORDER BY d.nombre ASC").fetchall()
