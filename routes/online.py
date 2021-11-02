@@ -364,7 +364,7 @@ def eliminarSecuencias(codigos: List[str]):
 
 @online.post("/tabla/")
 def tabla():
-    return conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, s.linaje_pango as nomenclatura,s.id_secuencia as variante "+
+    return conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, s.linaje_pango as nomenclatura,s.variante as variante "+
                         "from departamentos as d "+
                         "LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
                         "ORDER BY d.nombre ASC").fetchall()
