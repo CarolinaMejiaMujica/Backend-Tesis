@@ -255,7 +255,9 @@ def guardar_datos(secuencias,df_info,secuenciaAlineada):
 @online.post("/online/")
 async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File(...)):
     try:
-        for arc in archivos:
+        nombreFasta=archivos[1].filename
+        nombreTSV=archivos[0].filename
+        '''for arc in archivos:
             with open(arc.filename, "wb") as buffer:
                 shutil.copyfileobj(arc.file, buffer)
         if "fasta" in archivos[0].filename:
@@ -265,7 +267,7 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
         if "tsv" in archivos[0].filename:
             nombreTsv=archivos[0].filename
         elif "tsv" in archivos[1].filename:
-            nombreTsv=archivos[1].filename
+            nombreTsv=archivos[1].filename'''
         #registros = list(SeqIO.parse(nombreFasta, "fasta"))
         #df_info = pd.read_csv(nombreTsv,sep='\t')
         '''secuencias=lectura(registros)
