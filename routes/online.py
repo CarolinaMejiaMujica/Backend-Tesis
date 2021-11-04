@@ -266,8 +266,8 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
             nombreTsv=archivos[0].filename
         elif "tsv" in archivos[1].filename:
             nombreTsv=archivos[1].filename
-        registros = list(SeqIO.parse(nombreFasta, "fasta"))
-        df_info = pd.read_csv(nombreTsv,sep='\t')
+        #registros = list(SeqIO.parse(nombreFasta, "fasta"))
+        #df_info = pd.read_csv(nombreTsv,sep='\t')
         '''secuencias=lectura(registros)
         secuencias_1=eliminación_secuencias(secuencias)
         alineamiento_valores=alineamiento_multiple(secuencias_1)
