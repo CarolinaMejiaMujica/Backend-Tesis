@@ -10,5 +10,7 @@ secuencias = Table(
     Column('fecha_recoleccion',Date),
     Column('secuencia_alineada',Text),
     Column('id_departamento',Integer),
-    Column('linaje_pango',Integer)
+    Column('linaje_pango',Text),
+    Column('variante',Text),
+    Column('estado',Integer)
 )

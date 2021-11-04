@@ -32,7 +32,7 @@ todos =['Amazonas','Áncash','Apurímac','Arequipa','Ayacucho','Cajamarca','Call
 def data_secuencias(ini,fin,deps,algoritmo,parametro):
     if len(deps) == 1:
         valor=deps[0]
-        df_secu=pd.DataFrame(conn.execute(f"select s.codigo, s.fecha_recoleccion, d.nombre, v.nomenclatura, v.color,a.num_cluster,s.linaje_pango,s.variante"+ 
+        df_secu=pd.DataFrame(conn.execute(f"select s.codigo, s.fecha_recoleccion, d.nombre, v.nomenclatura, v.color,a.num_cluster,s.linaje_pango,s.variante,s.estado"+ 
                 " from agrupamiento as a"+
                 " LEFT JOIN secuencias as s ON a.id_secuencia=s.id_secuencia"+
                 " LEFT JOIN departamentos as d ON s.id_departamento=d.id_departamento"+ 
@@ -43,7 +43,7 @@ def data_secuencias(ini,fin,deps,algoritmo,parametro):
                 "\' and d.nombre in (\'"+ str(valor)+
                 "\') order by s.id_secuencia").fetchall())
     elif len(deps)>1:
-        df_secu=pd.DataFrame(conn.execute(f"select s.codigo, s.fecha_recoleccion, d.nombre, v.nomenclatura, v.color,a.num_cluster,s.linaje_pango,s.variante"+ 
+        df_secu=pd.DataFrame(conn.execute(f"select s.codigo, s.fecha_recoleccion, d.nombre, v.nomenclatura, v.color,a.num_cluster,s.linaje_pango,s.variante,s.estado"+ 
                 " from agrupamiento as a"+
                 " LEFT JOIN secuencias as s ON a.id_secuencia=s.id_secuencia"+
                 " LEFT JOIN departamentos as d ON s.id_departamento=d.id_departamento"+ 
@@ -58,7 +58,7 @@ def data_secuencias(ini,fin,deps,algoritmo,parametro):
     if df_secu.empty:
         return 'No hay datos'
     else:
-        df_secu.columns=['codigo','fecha', 'departamento', 'variante_predominante','color','cluster','linaje','variante']
+        df_secu.columns=['codigo','fecha', 'departamento', 'variante_predominante','color','cluster','linaje','variante','estado']
         #Recuperar archivo pca de BD
         archiv=conn.execute(f"select puntos_antiguos from archivos where id_archivo=8;").fetchall()
         X_pca = pickle.loads(archiv[0][0])
@@ -67,6 +67,47 @@ def data_secuencias(ini,fin,deps,algoritmo,parametro):
         df_secu['leyenda']=''
         for i in range(len(df_secu)):    
             df_secu['leyenda'][i]='Grupo '+str(df_secu['cluster'][i])+' - '+df_secu['variante_predominante'][i]
+        df_agrupamiento=df_secu.sort_values('cluster')
+        return df_agrupamiento
+
+def data_secuencias_dbscan(ini,fin,deps,algoritmo,parametro):
+    if len(deps) == 1:
+        valor=deps[0]
+        df_secu=pd.DataFrame(conn.execute(f"select s.codigo, s.fecha_recoleccion, d.nombre, v.nomenclatura, v.color,a.num_cluster,s.linaje_pango,s.variante,s.estado"+ 
+                " from agrupamiento as a"+
+                " LEFT JOIN secuencias as s ON a.id_secuencia=s.id_secuencia"+
+                " LEFT JOIN departamentos as d ON s.id_departamento=d.id_departamento"+ 
+                " LEFT JOIN variantes as v ON a.id_variante=v.id_variante"+
+                " LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo where m.nombre like " + algoritmo +
+                " and m.parametro= "+ str(parametro)+
+                " and s.fecha_recoleccion >= \'"+ ini +"\' and s.fecha_recoleccion<= \'"+ fin +
+                "\' and d.nombre in (\'"+ str(valor)+
+                "\') order by s.id_secuencia").fetchall())
+    elif len(deps)>1:
+        df_secu=pd.DataFrame(conn.execute(f"select s.codigo, s.fecha_recoleccion, d.nombre, v.nomenclatura, v.color,a.num_cluster,s.linaje_pango,s.variante,s.estado"+ 
+                " from agrupamiento as a"+
+                " LEFT JOIN secuencias as s ON a.id_secuencia=s.id_secuencia"+
+                " LEFT JOIN departamentos as d ON s.id_departamento=d.id_departamento"+ 
+                " LEFT JOIN variantes as v ON a.id_variante=v.id_variante"+
+                " LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo where m.nombre like " + algoritmo +
+                " and m.parametro= "+ str(parametro)+
+                " and s.fecha_recoleccion >= \'"+ ini +"\' and s.fecha_recoleccion<= \'"+ fin +
+                "\' and d.nombre in "+ str(deps)+
+                " order by s.id_secuencia").fetchall())
+    else:
+        return 'No hay datos'
+    if df_secu.empty:
+        return 'No hay datos'
+    else:
+        df_secu.columns=['codigo','fecha', 'departamento', 'variante_predominante','color','cluster','linaje','variante','estado']
+        #Recuperar archivo pca de BD
+        archiv=conn.execute(f"select puntos_antiguos from archivos where id_archivo=8;").fetchall()
+        X_pca = pickle.loads(archiv[0][0])
+        df_secu['x']=X_pca[0:len(df_secu),0]
+        df_secu['y']=X_pca[0:len(df_secu),1]
+        df_secu['leyenda']=''
+        for i in range(len(df_secu)):    
+            df_secu['leyenda'][i]='Grupo - '+df_secu['variante_predominante'][i]
         df_agrupamiento=df_secu.sort_values('cluster')
         return df_agrupamiento
 
@@ -84,7 +125,6 @@ def merge_dict(d1, d2):
 #KMEANS
 @agrupamiento.post("/graficokmeans/")
 def graficokmeans(fechaIni: str,fechaFin: str,parametro: int,deps: List[str]):
-    print(parametro)
     nombre_algoritmo="'k-means'"
     if len(deps)==25:
         deps=todos
@@ -94,6 +134,7 @@ def graficokmeans(fechaIni: str,fechaFin: str,parametro: int,deps: List[str]):
     
     #Recuperar los datos
     df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
+    df_secu=df_secu.loc[df_secu['estado']==1]
     if str(df_secu) == 'No hay datos':
         return 'No hay datos'
     else:        
@@ -154,6 +195,7 @@ def graficojerarquico(fechaIni: str,fechaFin: str,deps: List[str],parametro: int
 
     #Recuperar los datos  
     df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
+    df_secu=df_secu.loc[df_secu['estado']==1]
     if str(df_secu) == 'No hay datos':
         return 'No hay datos'
     else:
@@ -240,57 +282,71 @@ def dendrograma(fechaIni: str,fechaFin: str,deps: List[str]):
 
 #DBSCAN
 @agrupamiento.post("/graficodbscan/")
-def graficodbscan(fechaIni: str,fechaFin: str,deps: List[str],parametro: int):
+def graficodbscan(fechaIni: str,fechaFin: str,deps: List[str],parametro: float):
     nombre_algoritmo="'dbscan'"
     if len(deps)==25:
         deps=todos
     elif 'Todos' in deps:
         deps=todos
     result = tuple(deps)
-    df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
+    #Recuperar los datos
+    df_secu=data_secuencias_dbscan(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
+    df_secu=df_secu.loc[df_secu['estado']==1]
     if str(df_secu) == 'No hay datos':
         return 'No hay datos'
     else:
-        #Recuperar los datos      
-        df_agrupamiento=pd.DataFrame(df_secu[['codigo','fecha', 'departamento', 'variante','color','x','y']])
         # Grafico DBSCAN
+        MARKERS = ['circle','diamond','triangle','plus','square','star','square_pin','hex','asterisk','cross']
+        marcadores=MARKERS[:len(df_secu['variante'].unique())]
+
         hover=HoverTool(tooltips=[("Identificador", "@codigo"),
                 ("Departamento", "@departamento"),
                 ("Fecha de recolección","@fecha{%d-%m-%Y}"),
-                ("Variante predominante","@variante"),
-                ("Color", "$variante $swatch:color")],formatters={'@fecha': 'datetime'})
-
-        plot = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save,box_zoom", plot_width=800, plot_height=500)
+                ("Variante de la secuencia","@variante"),
+                ("Variante predominante del grupo","@variante_predominante"),
+                ("Color del grupo", "$leyenda $swatch:color")],formatters={'@fecha': 'datetime'})
+        plot = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save,box_zoom", plot_width=900, plot_height=600)
         plot.add_tools(hover)
         plot.xaxis.axis_label = '1er componente PCA'
         plot.yaxis.axis_label = '2do componente PCA'
-        plot.add_layout(Legend(), 'right')
-        plot.scatter(x = 'x', y = 'y', size=1, color='#9c9c9c',source=df_agrupamiento)
 
-        df=pd.DataFrame(df_secu.loc[df_secu['cluster']!=0][['codigo','fecha', 'departamento', 'variante','color','x','y']])
-        plot.scatter(x='x', y='y', color='color',  legend_group='variante', size=5,source=df)
+        #guardar un nuevo dataframe con las secuencias que son ruidos
+        df_ruido=pd.DataFrame(df_secu.loc[df_secu['cluster']==0])
+        df_ruido['variante_predominante']="Ruido"
+        df_ruido['color']="#A2A2A2"
+        plot.scatter(x='x', y='y',size=5,source=df_ruido,color='color')
 
-        plot.legend.location = "top_right"
-        plot.legend.title = 'Variantes'
+        df=pd.DataFrame(df_secu.loc[df_secu['cluster']!=0])
+        r=plot.scatter(x = 'x', y = 'y',size=10,line_color = 'grey',source=df,marker=factor_mark('variante', marcadores, df['variante'].unique()),color='color')
+
+        plot.x_range.renderers = [r]
+        plot.y_range.renderers = [r]
+
+        #Grupos
+        rc = plot.rect(x=0, y=0, height=1, width=1, color=tuple(df['color'].unique()))
+        rc.visible = False
+        #Grupos
+        legend1 = Legend(items=[
+            LegendItem(label=df['leyenda'].unique()[i], renderers=[rc], index=i) for i, c in enumerate(df['color'].unique())
+        ], location='center',orientation="horizontal",title='Grupo - Variante predominante')
+        plot.add_layout(legend1, 'above')
+
+        #Variantes
+        rs = plot.scatter(x=0, y=0, color="grey", marker=marcadores)
+        rs.visible = False
+        #Variantes
+        legend = Legend(items=[
+            LegendItem(label=df['variante'].unique()[i], renderers=[rs], index=i) for i, s in enumerate(marcadores)
+        ], location="top_right",title = 'Variantes')
+        plot.add_layout(legend, 'right')
+
+        plot.legend.label_text_font_style="normal"
         plot.legend.title_text_font_style = "bold"
-        plot.legend.title_text_font_size = "15px"
-        plot.legend.label_text_font_size = '11pt'
-        #Valor de epsilon
-        epsilon = Slider(title="Valor de epsilon", value=parametro, start=1, end=10, max_width=700)
-        def actualizar_grafico(attrname, old, new):
-            #Recuperar los datos
-            df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,epsilon.value)
-            df_agrupamiento=pd.DataFrame(df_secu[['codigo','fecha', 'departamento', 'variante','color','x','y']])
-            plot.scatter(x = 'x', y = 'y', size=1, color='#9c9c9c', source=df_agrupamiento)
-            
-            df=pd.DataFrame(df_secu.loc[df_secu['cluster']!=0][['codigo','fecha', 'departamento', 'variante','color','x','y']])
-            plot.scatter(x='x', y='y', color='color', size=5,source=df)
+        plot.legend.title_text_font_size = "13px"
+        plot.legend.label_text_font_size = "10pt"
 
-        for w in [epsilon]:
-            w.on_change('value', actualizar_grafico)
-        grafico_dbscan = pn.pane.Bokeh(column(epsilon, plot))
-
-        return json.dumps(json_item(plot, "graficodbscan"))
+        tabla= tablaagrupamiento(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
+        return json.dumps(json_item(plot, "graficodbscan")),tabla
 
 #LISTA DE DATOS
 @agrupamiento.post("/tablaagrupamiento/")
@@ -308,7 +364,7 @@ def tablaagrupamiento(fechaIni: str,fechaFin: str,deps: List[str],algoritmo: str
             "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
             "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
             "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-            "where m.nombre like "+algoritmo +" and m.parametro="+str(parametro)+
+            "where s.estado=1 and m.nombre like "+algoritmo +" and m.parametro="+str(parametro)+
             " and s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<= \'"+ fechaFin +"\' "+
             "and d.nombre in (\'"+ str(valor)+
             "\') ORDER BY d.nombre ASC").fetchall()
@@ -320,7 +376,7 @@ def tablaagrupamiento(fechaIni: str,fechaFin: str,deps: List[str],algoritmo: str
             "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
             "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
             "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-            "where m.nombre like "+algoritmo +" and m.parametro="+str(parametro)+
+            "where s.estado=1 and m.nombre like "+algoritmo +" and m.parametro="+str(parametro)+
             " and s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<= \'"+ fechaFin +"\' "+
             "and d.nombre in "+ str(result)+
             " ORDER BY d.nombre ASC").fetchall()

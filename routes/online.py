@@ -2,26 +2,19 @@ from bokeh.core.property.primitive import Int
 from fastapi import APIRouter, File, UploadFile
 from starlette.responses import JSONResponse
 from config.db import conn
-import json
-from bokeh.embed import json_item
 import pandas as pd
-from bokeh.plotting import figure
-from bokeh.models import HoverTool
-from math import pi
-from bokeh.transform import cumsum
 from typing import List
 import numpy as np
 from Bio import SeqIO, Seq
-from Bio.SeqIO.FastaIO import FastaIterator
 import shutil
 import pickle
 from pygrok import Grok
-from models.secuencias import secuencias
 from models.variantes import variantes
+from models.archivos import archivos
 from Bio.Align import MultipleSeqAlignment
 from datetime import date
-from sklearn.cluster import KMeans
-from scipy.spatial.distance import pdist, hamming, squareform
+from scipy.spatial.distance import hamming
+#from keras.models import model_from_json
 import psycopg2
 conexion = psycopg2.connect("dbname='BDTesis' user='postgres' host='instanciatesis.cjfczpppafxb.us-east-1.rds.amazonaws.com' password='carolina19620'")
 cur = conexion.cursor()
@@ -42,14 +35,59 @@ diccionario = {'AMA' : 'Amazonas','ANC' : 'Áncash','APU' : 'Apurímac','ARE' : 
                'TAC' : 'Tacna','TUM' : 'Tumbes','UCA' : 'Ucayali',
                'CAL' : 'Callao', 'C01' : 'Callao', 'C02': 'Callao','C03': 'Callao'}
 
-'''def ham(seq1,seq2):
-    return hamming(seq1,seq2)
+def matriz_secuencias_recuperado():
+    archiv=conn.execute(f"select matriz_secuencias from archivos where id_archivo=2;").fetchall()
+    return pickle.loads(archiv[0][0])
 
-def obtenerDatos(registros):
-    abrevPlaces=list() #Lista de las abreviaciones de los lugares
-    fechas=list() #Lista de las fechas
-    secuencias1=list() #Lista de las secuencias
-    secuenciasEliminadas=list() #Lista de las secuencias eliminadas
+def matriz_distancias_recuperado():
+    archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=3;").fetchall()
+    return pickle.loads(archiv[0][0])
+
+def mds_recuperado():
+    archiv=conn.execute(f"select mds from archivos where id_archivo=4;").fetchall()
+    return pickle.loads(archiv[0][0])
+
+def matriz_mds_recuperado():
+    archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=4;").fetchall()
+    return pickle.loads(archiv[0][0])
+
+def pca_recuperado():
+    archiv=conn.execute(f"select pca from archivos where id_archivo=5;").fetchall()
+    return pickle.loads(archiv[0][0])
+
+def matriz_pca_recuperado():
+    archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=5;").fetchall()
+    return pickle.loads(archiv[0][0])
+
+def landmark_recuperado():
+    archiv=conn.execute(f"select landmark from archivos where id_archivo=6;").fetchall()
+    return pickle.loads(archiv[0][0])
+
+def array_landmark_recuperado():
+    archiv=conn.execute(f"select puntos_antiguos from archivos where id_archivo=6;").fetchall()
+    return pickle.loads(archiv[0][0])
+
+'''def modelo_recuperado():
+    archiv=conn.execute(f"select modelo from archivos where id_archivo=7;").fetchall()
+    modelo_bd = pickle.loads(archiv[0][0])
+    modelo_recuperado = model_from_json(modelo_bd)
+    return modelo_recuperado'''
+
+def puntos_antiguos_recuperado():
+    archiv=conn.execute(f"select puntos_antiguos from archivos where id_archivo=8;").fetchall()
+    return pickle.loads(archiv[0][0])
+
+#Función de lectura de las secuencias
+def lectura(registros):
+    #Recuperar los códigos de las secuencias genómicas guardadas en BD
+    secuencias_guardadasBD=pd.DataFrame(conn.execute(f"SELECT codigo FROM secuencias").fetchall())
+    secuencias_guardadasBD.columns=['codigo']
+    codigos=secuencias_guardadasBD['codigo'].tolist()
+
+    abrevPlaces_1=list() #Lista de las abreviaciones de los lugares
+    fechas_1=list() #Lista de las fechas
+    secuencias_1=list() #Lista de las secuencias
+    secuenciasEliminadas_1=list() #Lista de las secuencias eliminadas
     for i in range(len(registros)):
         name=registros[i].id
         #Obtener la abreviación del nombre del departamento
@@ -58,11 +96,11 @@ def obtenerDatos(registros):
         place=name[segundo_indice+1:segundo_indice+4]
         #Secuencias que no tienen un lugar definido
         if not place in lista:
-            secuenciasEliminadas.append(registros[i])
+            secuenciasEliminadas_1.append(registros[i])
             continue
         else:
-            if not place in abrevPlaces:
-                abrevPlaces.append(place)
+            if not place in abrevPlaces_1:
+                abrevPlaces_1.append(place)
             #Obtener el código de la secuencia
             primer_indice=name.find('|')
             segundo_indice = name.find('|', primer_indice + 1)
@@ -70,35 +108,112 @@ def obtenerDatos(registros):
             #Obtener la fecha de recolección
             valor=grok.match(name)
             if valor == None:
-                secuenciasEliminadas.append(registros[i])
+                secuenciasEliminadas_1.append(registros[i])
                 continue
             else:
-                fecha=valor['year'] + '-' + valor['month'] + '-' + valor['day']
-                #Guardar los datos obtenidos
-                registros[i].name=diccionario[place]
-                registros[i].description=fecha   
-                registros[i].id=codigo 
-                fechas.append(fecha)
-                #Guardar la secuencia
-                secuencias1.append(registros[i])
-    #Eliminarción de secuencias con errores de lectura
-    pos,cantSecEli=0,0
-    while pos<len(secuencias1):
-        registro=set(secuencias1[pos].seq)
-        if 'N' in registro or 'K' in registro or 'M' in registro or 'R' in registro or 'S' in registro or 'W' in registro or 'Y' in registro:
-            secuencias1.pop(pos)
-            cantSecEli+=1
-        else:
-            pos+=1
-    return secuencias1
+                if not codigo in codigos:
+                    fecha=valor['year'] + '-' + valor['month'] + '-' + valor['day']
+                    #Guardar los datos obtenidos
+                    registros[i].name=diccionario[place]
+                    registros[i].description=fecha   
+                    registros[i].id=codigo 
+                    fechas_1.append(fecha)
+                    #Guardar la secuencia
+                    secuencias_1.append(registros[i])
+    return secuencias_1
 
-def obtenerDf(df):
+#Función para la Eliminación de las secuencias genómicas SARS-CoV-2 con errores de lectura
+def eliminación_secuencias(secuencias_1):
+    pos_1,cantSecEli_1=0,0
+    while pos_1<len(secuencias_1):
+        registro=set(secuencias_1[pos_1].seq)
+        if 'N' in registro or 'K' in registro or 'M' in registro or 'R' in registro or 'S' in registro or 'W' in registro or 'Y' in registro:
+            secuencias_1.pop(pos_1)
+            cantSecEli_1+=1
+        else:
+            pos_1+=1
+    return secuencias_1
+
+#Función para realizar el Alineamiento múltiple de las secuencias genómicas SARS-CoV-2
+def alineamiento_multiple(secuencias_1):
+    maxlongitud=max(len(registro.seq) for registro in secuencias_1)
+    i=0
+    secuenciaAlineada=[]
+    for registro in secuencias_1:
+        if len(registro.seq) != maxlongitud:
+            secuencia = str(registro.seq).ljust(maxlongitud, '.')
+            registro.seq = Seq.Seq(secuencia)
+        secuenciaAlineada.append(registro.seq)
+        i=i+1
+    secuenciasAlineadas_nuevas = MultipleSeqAlignment(secuencias_1)
+    return secuenciasAlineadas_nuevas,secuencias_1,secuenciaAlineada
+
+#Función que calcula la distancia hamming
+def ham(seq1,seq2):
+    return hamming(seq1,seq2)
+
+#Función que calcula la distancia de las secuencias a cada landmark
+def distancia_landmark(matriz_secuencias_nuevas,matriz_secuencias_antigua):
+    landmark =landmark_recuperado()
+    X1 = np.empty((0, 20), int)
+    for i in range(len(matriz_secuencias_nuevas)):
+        fila=[]
+        #calcular la distancia de cada punto a los landmark
+        for j in range(20):
+            fila.append(np.around(ham(matriz_secuencias_nuevas[i],matriz_secuencias_antigua[landmark[j]]),2))
+        X1 = np.append(X1, np.array([fila]), axis=0)
+    return X1
+
+#Función que calcula la distancia hamming de las nuevas secuencias
+def distancia_hamming(secuenciasAlineadas_nuevas,matriz_secuencias_recuperado):
+    matriz_secuencias_nuevas=np.array(secuenciasAlineadas_nuevas)
+
+    antigua_maxlongitud = len(matriz_secuencias_recuperado[0])
+    nueva_maxlongitud = len(matriz_secuencias_nuevas[0])
+
+    if nueva_maxlongitud > antigua_maxlongitud:
+        matriz_secuencias_antigua=np.empty((len(matriz_secuencias_recuperado), nueva_maxlongitud), str)
+        for i in range(len(matriz_secuencias_recuperado)):
+            for j in range(nueva_maxlongitud-antigua_maxlongitud):
+                matriz_secuencias_antigua[i]=np.append(matriz_secuencias_recuperado[i], '.')
+        X1=distancia_landmark(matriz_secuencias_nuevas,matriz_secuencias_antigua)
+        nuevas_matriz_secuencias=np.append(matriz_secuencias_antigua, matriz_secuencias_nuevas, axis=0)
+    else:
+        for i in range(len(matriz_secuencias_nuevas)):
+            matriz_secuencias_nuevas2=np.empty((len(matriz_secuencias_nuevas), antigua_maxlongitud), str)
+            for j in range(antigua_maxlongitud-nueva_maxlongitud):
+                matriz_secuencias_nuevas2[i]=np.append(matriz_secuencias_nuevas[i], '.')
+        X1=distancia_landmark(matriz_secuencias_nuevas2,matriz_secuencias_recuperado)
+        nuevas_matriz_secuencias=np.append(matriz_secuencias_recuperado, matriz_secuencias_nuevas2, axis=0)
+    #Guardar en BD nuevas_matriz_secuencias
+    pickle_matriz_secuencias = pickle.dumps(nuevas_matriz_secuencias)
+    conn.execute(archivos.update().where(archivos.c.id_archivo == 2).values(matriz_secuencias=pickle_matriz_secuencias))
+    return X1
+
+#Función para guardar datos de las secuencias en BD
+def guardar_datos(secuencias,df_info,secuenciaAlineada):
+    df = pd.DataFrame(columns=['id', 'secuencia', 'secuenciaAlineada','lugar','fecha','linaje','id_variante','variante','color'])
+    for secu in secuencias:
+        df = df.append({'id': secu.id, 'secuencia':secu.seq, 'lugar':secu.name,'fecha':secu.description}, ignore_index=True)
+    ids = np.array(df['id'])
+    ids = ids.astype('str')
+    cant=[]
+    for i in range(len(df_info)):
+        id=df_info.iloc[i]['Accession ID']
+        variante=df_info.iloc[i]['Lineage']
+        indice=np.where(ids == id)
+        if len(indice[0]) == 1:
+            df['linaje'][indice[0][0]]=variante
+        else:
+            #secuencias eliminadas
+            cant=np.append(cant,[id],axis= 0)
     variants=pd.DataFrame(conn.execute(variantes.select()).fetchall())
     variants.columns=['id_variante', 'nomenclatura', 'linaje_pango','sustituciones_spike','nombre','color']
     linajes_pangos=[]
     ids_linajes_pangos=[]
     for i in range(len(df)):
-        pango=df.iloc[i].linaje
+        df['secuenciaAlineada'][i]=secuenciaAlineada[i]
+        pango=str(df.iloc[i].linaje)
         #verificar que variante le corresponde
         for v in range(len(variants)):
             valores=variants.iloc[v]['linaje_pango']
@@ -106,218 +221,39 @@ def obtenerDf(df):
                 if 'sublinajes' in val:
                     val=val.replace('sublinajes ',"")
                     if val in pango:
+                        df['id_variante'][i]=variants.iloc[v]['id_variante']
                         df['variante'][i]=variants.iloc[v]['nomenclatura']
                         df['color'][i]=variants.iloc[v]['color']
                 else:
                     if pango in val:
+                        df['id_variante'][i]=variants.iloc[v]['id_variante']
                         df['variante'][i]=variants.iloc[v]['nomenclatura']
                         df['color'][i]=variants.iloc[v]['color']
         if str("nan") == str(df['variante'][i]):
             ids_linajes_pangos.append(df.iloc[i].id)
             linajes_pangos.append(pango)
+            df['id_variante'][i]=variants.iloc[10]['id_variante']
             df['variante'][i]='Otro'
             df['color'][i]=variants.iloc[10]['color']
-    return df
 
-def clustering(df,X_pca,matriz_mds2):
-    k=len(df['variante'].unique())
-    k_means = KMeans(init = "k-means++", n_clusters = k, n_init = 12).fit(matriz_mds2)
-    k_means_labels = k_means.labels_
-    df_k_means=pd.DataFrame(k_means.labels_)
-    df_k_means.columns=['cluster_kmeans_10']
-    df_k_means['x']=X_pca[:,0]
-    df_k_means['y']=X_pca[:,1]
-    df_k_means['color']=''
-    df_k_means['grupo']=''
-    df_k_means['variante']=df['variante']
-    df_k_means['id']=df['id']
-    todas_variantes=np.array(df['variante'].unique())
-    todas_variantes=todas_variantes.tolist()
-    lista_variantes=[]
-    for i in range(k):
-        variantes_x_cantidad=df_k_means.loc[df_k_means['cluster_kmeans_10']==i]['variante'].value_counts()
-        cantidades_x_grupo=np.array(variantes_x_cantidad.values) #cantidades de las variantes
-        variantes_x_grupo=np.array(variantes_x_cantidad.index) #nombre de las variantes
-        máximo_valor=np.amax(variantes_x_cantidad) #el valor de la variante que más se repite
-        indice=np.where(variantes_x_cantidad==máximo_valor)[0][0] #se obtiene el indice del máximo valor
-        name_variante=variantes_x_grupo[indice] #Se obtiene el nombre de la variante que más se repite
-        bandera=0
-        while bandera==0:
-            if name_variante in lista_variantes:
-                #Si esta, se opta por el siguiente mayor
-                cantidades_x_grupo = np.delete(cantidades_x_grupo, indice)
-                variantes_x_grupo = np.delete(variantes_x_grupo, indice)
-                if len(cantidades_x_grupo)==0:
-                    variantes_restantes = [v for v in todas_variantes if v not in lista_variantes]
-                    name_variante = variantes_restantes[0]
-                else:
-                    máximo_valor=np.amax(cantidades_x_grupo)
-                    indice=np.where(cantidades_x_grupo==máximo_valor)[0][0]
-                    name_variante=variantes_x_grupo[indice]
-                bandera=0
-            else:
-                #Sino esta, significa que se puede signar a este grupo
-                df_k_means['grupo']=np.where(df_k_means['cluster_kmeans_10']==i,name_variante,df_k_means['grupo'])
-                df_k_means['color']=np.where(df_k_means['cluster_kmeans_10']==i,np.array(df.loc[df['variante']==name_variante]['color'])[0],df_k_means['color'])
-                #agregar a la lista
-                lista_variantes.append(name_variante)
-                bandera=1
-    return df_k_means
-
-def guardarDatosConAgrupamiento(df_k_means,df):
-    k=len(df['variante'].unique())
-    #GUARDAR grupos K-MEANS
-    nombre_algoritmo="'k-means'"
-    df_k_means1=pd.DataFrame(conn.execute(f"select id_algoritmo, parametro from algoritmos where nombre={nombre_algoritmo}").fetchall())
-    df_k_means1.columns=['id_algoritmo','parametro']
-    #cantidad=conn.execute(f"SELECT count(*) FROM variantes").fetchall()[0][0]
+    dic_dep=dict(conn.execute(f"SELECT nombre,id_departamento FROM departamentos").fetchall())
     array=[]
-
-    algoritmo_id=df_k_means1.loc[df_k_means1['parametro']==k]['id_algoritmo'].iloc[0]
-    for i in range(len(df_k_means)):
-        indice=i
-        id=conn.execute(f"select id_secuencia from secuencias where codigo=\'{df['id'][indice]}\'").fetchall()[0][0]
-        variante_id=conn.execute(f"select id_variante from variantes where nomenclatura=\'{df_k_means['grupo'][indice]}\'").fetchall()[0][0]
-        tupla=(int(algoritmo_id),int(id),int(variante_id),int(df_k_means['cluster_kmeans_10'][indice]+1))
-        array.append(tupla)
-    #INSERTAR EN BD
-    args_str = b','.join(cur.mogrify("(%s,%s,%s,%s)", x) for x in array)
-    cur.execute(b"INSERT INTO public.agrupamiento(id_algoritmo, id_secuencia, id_variante,num_cluster) VALUES " + args_str)
-    conexion.commit()
-
-def guardarDatos(df):
-    k=len(df['variante'].unique())
-    nombre_algoritmo="'k-means'"
-    df_k_means1=pd.DataFrame(conn.execute(f"select id_algoritmo, parametro from algoritmos where nombre={nombre_algoritmo}").fetchall())
-    df_k_means1.columns=['id_algoritmo','parametro']
-    array=[]
-    algoritmo_id=df_k_means1.loc[df_k_means1['parametro']==k]['id_algoritmo'].iloc[0]
     for i in range(len(df)):
-        indice=i
-        id=conn.execute(f"select id_secuencia from secuencias where codigo=\'{df['id'][indice]}\'").fetchall()[0][0]
-        variante_id=conn.execute(f"select id_variante from variantes where nomenclatura=\'{df['variante'][indice]}\'").fetchall()[0][0]
-        tupla=(int(algoritmo_id),int(id),int(variante_id),int(k+1))
+        id_dep=dic_dep[df.iloc[i]['lugar']]
+        tupla=(df.iloc[i]['id'],str(df.iloc[i]['secuencia']),date.fromisoformat(df.iloc[i]['fecha']),str(df.iloc[i]['secuenciaAlineada']),int(id_dep),str(df.iloc[i]['linaje']),str(df.iloc[i]['variante']))
         array.append(tupla)
+    
     #INSERTAR EN BD
-    args_str = b','.join(cur.mogrify("(%s,%s,%s,%s)", x) for x in array)
-    cur.execute(b"INSERT INTO public.agrupamiento(id_algoritmo, id_secuencia, id_variante,num_cluster) VALUES " + args_str)
+    args_str = b','.join(cur.mogrify("(%s,%s,%s,%s,%s,%s,%s)", x) for x in array)
+    cur.execute(b"INSERT INTO public.secuencias(codigo, secuencia, fecha_recoleccion,secuencia_alineada,id_departamento,linaje_pango,variante) VALUES " + args_str)
     conexion.commit()
 
-@online.post("/online/")
-async def subir_varios_archivos(valor: Int,archivos: List[UploadFile] = File(...)):
-    try:
-        #Recuperar archivos
-        archiv=conn.execute(f"select pca from archivos where id_archivo=3;").fetchall()
-        pca = pickle.loads(archiv[0][0])
-        archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=2;").fetchall()
-        matriz_secuencias = pickle.loads(archiv[0][0])
-        archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=3;").fetchall()
-        X_pca = pickle.loads(archiv[0][0])
-        archiv=conn.execute(f"select mds from archivos where id_archivo=2;").fetchall()
-        mds = pickle.loads(archiv[0][0])
-        archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=1;").fetchall()
-        matriz_distancias = pickle.loads(archiv[0][0])
-        #Leer neuvos archivos
-        for arc in archivos:
-            with open(arc.filename, "wb") as buffer:
-                shutil.copyfileobj(arc.file, buffer)
-        registros = list(SeqIO.parse(archivos[0].filename, "fasta"))
-        df_info = pd.read_csv(archivos[1].filename,sep='\t')
-        #Obtener datos de las nuevas secuencias genómicas
-        secuencias1=obtenerDatos(registros)
-        #Recuperar secuencias registradas
-        secuencias_registradas=pd.DataFrame(conn.execute(secuencias.select()).fetchall())
-        secuencias_registradas.columns=['id_secuencia', 'codigo', 'secuencia','fecha_recoleccion','secuencia_alineada','id_departamento','linaje_pango']
-        #Obtener las nuevas secuencias
-        secuencias_nuevas=list()
-        for i in range(len(secuencias1)):
-            #si no se encuentra el id de la secuencia ya regsitrada entonces es una nueva secuencia
-            if not secuencias1[i].id in list(secuencias_registradas['codigo']):
-                secuencias_nuevas.append(secuencias1[i])
-        #Obtener el linake pango de las secuencias
-        df = pd.DataFrame(columns=['id', 'secuencia', 'secuenciaAlineada','lugar','fecha','linaje','variante','color'])
-        for secu in secuencias_nuevas:
-            df = df.append({'id': secu.id, 'secuencia':secu.seq, 'lugar':secu.name,'fecha':secu.description}, ignore_index=True)
-        ids = np.array(df['id'])
-        ids = ids.astype('str')
-        cant=[]
-        for i in range(len(df_info)):
-            id=df_info.iloc[i]['Accession ID']
-            variante=df_info.iloc[i]['Lineage']
-            indice=np.where(ids == id)
-            if len(indice[0]) == 1:
-                df['linaje'][indice[0][0]]=variante
-            else:
-                #secuencias eliminadas
-                cant=np.append(cant,[id],axis= 0)
-        #Alineamiento múltiple de las secuencias1
-        maxlongitud = len(matriz_secuencias[0])
-        i=0
-        for registro in secuencias_nuevas:
-            if len(registro.seq) != maxlongitud:
-                secuencia = str(registro.seq).ljust(maxlongitud, '.')
-                registro.seq = Seq.Seq(secuencia)
-            df['secuenciaAlineada'][i]=registro.seq
-            i=i+1
-        secuenciasAlineadas_nuevas = MultipleSeqAlignment(secuencias_nuevas)
-        #Insertar datos en BD
-        dic_dep=dict(conn.execute(f"SELECT nombre,id_departamento FROM departamentos").fetchall())
-        array=[]
-        for i in range(len(df)):
-            id_dep=dic_dep[df.iloc[i]['lugar']]
-            tupla=(df.iloc[i]['id'],str(df.iloc[i]['secuencia']),date.fromisoformat(df.iloc[i]['fecha']),str(df.iloc[i]['secuenciaAlineada']),int(id_dep),str(df.iloc[i]['linaje']))
-            array.append(tupla)
-        args_str = b','.join(cur.mogrify("(%s,%s,%s,%s,%s,%s)", x) for x in array)
-        cur.execute(b"INSERT INTO public.secuencias(codigo, secuencia, fecha_recoleccion,secuencia_alineada,id_departamento,linaje_pango) VALUES " + args_str)
-        conexion.commit()
+    prueba=pd.DataFrame(conn.execute(f"SELECT id_secuencia, codigo FROM secuencias").fetchall())
+    prueba.columns=['id_secuencia', 'id']
+    df = pd.merge(prueba, df, on="id")
 
-        #Calcular la matriz de distancia Hamming
-        matriz_secuencias_nuevas= np.array([ list(secuencia.seq) for secuencia in secuenciasAlineadas_nuevas])
-        if len(matriz_secuencias_nuevas)==1:
-            matrizNueva=np.append(matriz_secuencias,[matriz_secuencias_nuevas],axis= 0)
-        else:
-            matrizNueva=np.concatenate((matriz_secuencias, matriz_secuencias_nuevas), axis=0)
-        distancia_condensada2=pdist(matrizNueva, ham)
-        dist_condensada2=np.around(np.array(distancia_condensada2),2)
-        matriz_distancias2=squareform(dist_condensada2)
-        #Calculo de MDS
-        matriz_mds2=mds.fit_transform(matriz_distancias2,matriz_distancias)
-        #PCA
-        cantAgregadas=len(matriz_secuencias_nuevas)
-        matriz_pca=matriz_mds2[len(matriz_mds2)-cantAgregadas:len(matriz_mds2)]
-        if len(matriz_pca) == 1:
-            matriz_pca=matriz_mds2[len(matriz_mds2)-cantAgregadas-1:len(matriz_mds2)]
-            X_pca2=pca.transform(matriz_pca)
-            X_pca=np.append(X_pca,[X_pca2[1]],axis= 0)
-        else:
-            X_pca2=pca.transform(matriz_pca)
-            X_pca=np.concatenate((X_pca,X_pca2),axis= 0)
-
-        if valor ==1:
-            #Sin agrupamiento
-            df=obtenerDf(df)
-            k=len(df['variante'].unique())
-            #Guardar datos en BD
-            guardarDatos(df)
-
-        elif valor == 2:
-            #Con agrupamiento
-            df=pd.DataFrame(conn.execute(secuencias1.select()).fetchall())
-            df.columns=['id', 'codigo', 'secuencia','fecha','secuenciaAlineada','lugar','linaje']
-            df['variante']=''
-            df['color']=''
-            df=obtenerDf(df)
-            #Entrenar modelos
-            df_agrup=clustering(df,X_pca,matriz_mds2)
-            #SE ELIMINA LA AGRUPACIÓN ANTERIOR Y SE GUARDA LA ACTUAL
-            conn.execute(f"truncate table agrupamiento").fetchall()
-            #Guardar datos en BD
-            guardarDatosConAgrupamiento(df_agrup,df)
-
-        return JSONResponse(content={"upload_files": True},status_code=200)
-    except FileNotFoundError:
-        return JSONResponse(content={"upload_files": False},status_code=404)'''
-
+    
+'''
 @online.post("/online/")
 async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File(...)):
     try:
@@ -333,30 +269,51 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
         elif "tsv" in archivos[1].filename:
             nombreTsv=archivos[1].filename
         registros = list(SeqIO.parse(nombreFasta, "fasta"))
-        print(len(registros))
         df_info = pd.read_csv(nombreTsv,sep='\t')
-        print(parametro)
+        secuencias=lectura(registros)
+        secuencias_1=eliminación_secuencias(secuencias)
+        alineamiento_valores=alineamiento_multiple(secuencias_1)
+        secuenciasAlineadas_nuevas=alineamiento_valores[0]
+        secuencias_1=alineamiento_valores[1]
+        secuenciaAlineada=alineamiento_valores[2]
+        
+        #Guardar secuencias en BD
+        guardar_datos(secuencias_1,df_info,secuenciaAlineada)
+
+        matriz_secuencias=matriz_secuencias_recuperado()
+        X1=distancia_hamming(secuenciasAlineadas_nuevas,matriz_secuencias)
+        modelo=modelo_recuperado()
+        valores1=modelo.predict(X1)
         if parametro==0:
             #sin agrupamiento
-            pass
+
+            #GUARDAR DATOS EN BD
+            archiv=conn.execute(f"select puntos_nuevos from archivos where id_archivo=9;").fetchall()
+            if archiv:
+                #hay datos
+                valores_nuevos=np.append(archiv, valores1, axis=0)
+                pickle_puntos_nuevos = pickle.dumps(valores_nuevos)
+                conn.execute(archivos.update().where(archivos.c.id_archivo == 9).values(puntos_nuevos=pickle_puntos_nuevos))
+            else:
+                pickle_puntos_nuevos = pickle.dumps(valores1)
+                conn.execute(archivos.insert().values(
+                    puntos_nuevos = pickle_puntos_nuevos
+                ))
         else:
             #realizar el agrupamiento de nuevo
             pass
         return JSONResponse(content={"archivo 1": archivos[0].filename,"archivo 2:":archivos[1].filename },status_code=200)
     except FileNotFoundError:
         return JSONResponse(content={"upload_files": False},status_code=404)
+'''
+
 
 @online.post("/eliminar/")
 def eliminarSecuencias(codigos: List[str]):
     try:
-        valores=conn.execute(f"select a.id_agrupamiento FROM agrupamiento as a LEFT JOIN secuencias as s ON a.id_secuencia=s.id_secuencia WHERE s.codigo in " + str(tuple(codigos))).fetchall()
-        ids=list(list(zip(*valores))[0])
-        args_ids = b','.join(cur.mogrify("%s", (x,)) for x in ids)
         args_str = b','.join(cur.mogrify("%s", (x,)) for x in codigos)
-        #cur.execute(b"DELETE FROM secuencias WHERE codigo = " + args_str)
-        #conexion.commit()
-        #cur.execute(b"DELETE FROM agrupamiento WHERE id_agrupamiento = " + args_ids)
-        #conexion.commit()
+        cur.execute(b"UPDATE secuencias SET estado = 0 WHERE codigo = " + args_str)
+        conexion.commit()
         table=tabla()
         return True,table
     except:
@@ -366,5 +323,5 @@ def eliminarSecuencias(codigos: List[str]):
 def tabla():
     return conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, s.linaje_pango as nomenclatura,s.variante as variante "+
                         "from departamentos as d "+
-                        "LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
+                        "LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento WHERE s.estado=1"+
                         "ORDER BY d.nombre ASC").fetchall()

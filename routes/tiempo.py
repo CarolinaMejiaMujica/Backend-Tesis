@@ -26,7 +26,7 @@ def data_secuencias(ini,fin,deps):
             "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
             "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
             "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-            "where m.nombre like 'k-means' and m.parametro=6 and "+
+            "where s.estado=1 and m.nombre like 'k-means' and m.parametro=6 and "+
             "s.fecha_recoleccion >= \'"+ ini +"\' and s.fecha_recoleccion<= \'"+ fin +
             "\' and d.nombre in (\'"+ str(valor)+
             "\') group by s.fecha_recoleccion, v.nomenclatura,v.color order by s.fecha_recoleccion").fetchall())
@@ -36,7 +36,7 @@ def data_secuencias(ini,fin,deps):
                 "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
                 "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
                 "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-                "where m.nombre like 'k-means' and m.parametro=6 and "+
+                "where s.estado=1 and m.nombre like 'k-means' and m.parametro=6 and "+
                 "s.fecha_recoleccion >= \'"+ ini +"\' and s.fecha_recoleccion<= \'"+ fin +
                 "\' and d.nombre in "+ str(deps)+
                 " group by s.fecha_recoleccion, v.nomenclatura,v.color order by s.fecha_recoleccion").fetchall())
@@ -50,8 +50,6 @@ def data_secuencias(ini,fin,deps):
 
 @tiempo.post("/graficolineal/")
 def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
-    
-    print(fechaIni,fechaFin)
     if len(deps)==25:
         deps=todos
     elif 'Todos' in deps:

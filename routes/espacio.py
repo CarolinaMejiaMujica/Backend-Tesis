@@ -33,7 +33,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                                 "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
                                 "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
                                 "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-                                "where m.nombre like 'k-means' and m.parametro=6 and "+
+                                "where s.estado=1 and m.nombre like 'k-means' and m.parametro=6 and "+
                                 "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<=\'"+ fechaFin +"\' "+
                                 "and d.nombre in (\'"+ str(valor)+
                                 "\') group by d.nombre order by d.nombre").fetchall())
@@ -43,7 +43,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                                  "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
                                  "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
                                  "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-                                 "where m.nombre like 'k-means' and m.parametro=6 and "+
+                                 "where s.estado=1 and m.nombre like 'k-means' and m.parametro=6 and "+
                                  "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<=\'"+ fechaFin +"\' "+
                                  "and d.nombre in "+ str(result)+
                                  " group by d.nombre order by d.nombre").fetchall())
@@ -69,7 +69,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                                     "v.color from departamentos as d LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
                                     "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
                                     "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-                                    "where m.nombre like 'k-means' and m.parametro=6 and "+
+                                    "where s.estado=1 and m.nombre like 'k-means' and m.parametro=6 and "+
                                     "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<=\'"+ fechaFin +"\' "+
                                     "and d.nombre in (\'"+ str(valor)+
                                     "\') GROUP BY d.nombre,v.id_variante ORDER BY d.nombre ASC").fetchall())
@@ -78,7 +78,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                                     "v.color from departamentos as d LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
                                     "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
                                     "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-                                    "where m.nombre like 'k-means' and m.parametro=6 and "+
+                                    "where s.estado=1 and m.nombre like 'k-means' and m.parametro=6 and "+
                                     "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<=\'"+ fechaFin +"\' "+
                                     "and d.nombre in "+ str(result)+
                                     " GROUP BY d.nombre,v.id_variante ORDER BY d.nombre ASC").fetchall())
@@ -158,7 +158,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                         "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
                         "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
                         "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-                        "where m.nombre like 'k-means' and m.parametro=6 and "+
+                        "where s.estado=1 and m.nombre like 'k-means' and m.parametro=6 and "+
                         "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<= \'"+ fechaFin +"\' "+
                         "and d.nombre in (\'"+ str(valor)+
                         "\') ORDER BY d.nombre ASC").fetchall()
@@ -169,7 +169,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                         "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
                         "LEFT JOIN variantes as v ON a.id_variante=v.id_variante "+
                         "LEFT JOIN algoritmos as m ON a.id_algoritmo=m.id_algoritmo "+
-                        "where m.nombre like 'k-means' and m.parametro=6 and "+
+                        "where s.estado=1 and m.nombre like 'k-means' and m.parametro=6 and "+
                         "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<= \'"+ fechaFin +"\' "+
                         "and d.nombre in "+ str(result)+
                         " ORDER BY d.nombre ASC").fetchall()

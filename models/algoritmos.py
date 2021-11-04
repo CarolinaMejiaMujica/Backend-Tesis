@@ -7,5 +7,5 @@ modelos= Table(
     Column('id_algoritmo',Integer,primary_key=True),
     Column('nombre',String(20)),
     Column('parametro',Integer),
-    Column('modelo_entrenado',LargeBinary)
+    Column('algoritmo_entrenado',LargeBinary)
 )
