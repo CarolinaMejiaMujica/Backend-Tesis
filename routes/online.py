@@ -253,7 +253,7 @@ def guardar_datos(secuencias,df_info,secuenciaAlineada):
     df = pd.merge(prueba, df, on="id")
 
     
-'''
+
 @online.post("/online/")
 async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File(...)):
     try:
@@ -270,7 +270,7 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
             nombreTsv=archivos[1].filename
         registros = list(SeqIO.parse(nombreFasta, "fasta"))
         df_info = pd.read_csv(nombreTsv,sep='\t')
-        secuencias=lectura(registros)
+        '''secuencias=lectura(registros)
         secuencias_1=eliminación_secuencias(secuencias)
         alineamiento_valores=alineamiento_multiple(secuencias_1)
         secuenciasAlineadas_nuevas=alineamiento_valores[0]
@@ -301,11 +301,11 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
                 ))
         else:
             #realizar el agrupamiento de nuevo
-            pass
+            pass'''
         return JSONResponse(content={"archivo 1": archivos[0].filename,"archivo 2:":archivos[1].filename },status_code=200)
     except FileNotFoundError:
         return JSONResponse(content={"upload_files": False},status_code=404)
-'''
+
 
 
 @online.post("/eliminar/")
