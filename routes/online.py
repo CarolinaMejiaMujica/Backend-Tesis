@@ -252,8 +252,6 @@ def guardar_datos(secuencias,df_info,secuenciaAlineada):
     prueba.columns=['id_secuencia', 'id']
     df = pd.merge(prueba, df, on="id")
 
-    
-
 @online.post("/online/")
 async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File(...)):
     try:
@@ -302,9 +300,9 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
         else:
             #realizar el agrupamiento de nuevo
             pass'''
-        return JSONResponse(content={"archivo 1": archivos[0].filename,"archivo 2:":archivos[1].filename },status_code=200)
+        return True
     except FileNotFoundError:
-        return JSONResponse(content={"upload_files": False},status_code=404)
+        return False
 
 
 
