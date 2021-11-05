@@ -134,15 +134,15 @@ def graficokmeans(fechaIni: str,fechaFin: str,parametro: int,deps: List[str]):
     
     #Recuperar los datos
     df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
-    df_secu=df_secu.loc[df_secu['estado']==1]
     if str(df_secu) == 'No hay datos':
         return 'No hay datos'
-    else:        
+    else:
+        df_secu=df_secu.loc[df_secu['estado']==1]
         # Grafico K-means
         MARKERS = ['circle','diamond','triangle','plus','square','star','square_pin','hex','asterisk','cross']
         marcadores=MARKERS[:len(df_secu['variante'].unique())]
 
-        hover=HoverTool(tooltips=[("Identificador", "@codigo"),
+        hover=HoverTool(tooltips=[("ID de acceso", "@codigo"),
                 ("Departamento", "@departamento"),
                 ("Fecha de recolección","@fecha{%d-%m-%Y}"),
                 ("Variante de la secuencia","@variante"),
@@ -195,15 +195,15 @@ def graficojerarquico(fechaIni: str,fechaFin: str,deps: List[str],parametro: int
 
     #Recuperar los datos  
     df_secu=data_secuencias(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
-    df_secu=df_secu.loc[df_secu['estado']==1]
     if str(df_secu) == 'No hay datos':
         return 'No hay datos'
     else:
+        df_secu=df_secu.loc[df_secu['estado']==1]
         # Grafico jerárquico
         MARKERS = ['circle','diamond','triangle','plus','square','star','square_pin','hex','asterisk','cross']
         marcadores=MARKERS[:len(df_secu['variante'].unique())]
 
-        hover=HoverTool(tooltips=[("Identificador", "@codigo"),
+        hover=HoverTool(tooltips=[("ID de acceso", "@codigo"),
                 ("Departamento", "@departamento"),
                 ("Fecha de recolección","@fecha{%d-%m-%Y}"),
                 ("Variante de la secuencia","@variante"),
@@ -291,15 +291,15 @@ def graficodbscan(fechaIni: str,fechaFin: str,deps: List[str],parametro: float):
     result = tuple(deps)
     #Recuperar los datos
     df_secu=data_secuencias_dbscan(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
-    df_secu=df_secu.loc[df_secu['estado']==1]
     if str(df_secu) == 'No hay datos':
         return 'No hay datos'
     else:
+        df_secu=df_secu.loc[df_secu['estado']==1]
         # Grafico DBSCAN
         MARKERS = ['circle','diamond','triangle','plus','square','star','square_pin','hex','asterisk','cross']
         marcadores=MARKERS[:len(df_secu['variante'].unique())]
 
-        hover=HoverTool(tooltips=[("Identificador", "@codigo"),
+        hover=HoverTool(tooltips=[("ID de acceso", "@codigo"),
                 ("Departamento", "@departamento"),
                 ("Fecha de recolección","@fecha{%d-%m-%Y}"),
                 ("Variante de la secuencia","@variante"),

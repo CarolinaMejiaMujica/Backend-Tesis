@@ -152,7 +152,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
     result = tuple(deps)
     if len(result) == 1:
         valor=result[0]
-        return conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, v.nomenclatura as nomenclatura,v.nombre as variante "+
+        respuesta= conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, v.nomenclatura as nomenclatura,v.nombre as variante "+
                         "from departamentos as d "+
                         "LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
                         "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
@@ -162,8 +162,12 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                         "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<= \'"+ fechaFin +"\' "+
                         "and d.nombre in (\'"+ str(valor)+
                         "\') ORDER BY d.nombre ASC").fetchall()
+        if len(respuesta) == 0:
+            return 'No hay datos'
+        return respuesta
+
     elif len(result) > 1:
-        return conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, v.nomenclatura as nomenclatura,v.nombre as variante "+
+        respuesta= conn.execute(f"SELECT d.nombre as nombre, s.codigo, s.fecha_recoleccion as fecha, v.nomenclatura as nomenclatura,v.nombre as variante "+
                         "from departamentos as d "+
                         "LEFT JOIN secuencias as s ON d.id_departamento=s.id_departamento "+
                         "LEFT JOIN agrupamiento as a ON s.id_secuencia=a.id_secuencia "+
@@ -173,5 +177,8 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                         "s.fecha_recoleccion >= \'"+ fechaIni +"\' and s.fecha_recoleccion<= \'"+ fechaFin +"\' "+
                         "and d.nombre in "+ str(result)+
                         " ORDER BY d.nombre ASC").fetchall()
+        if len(respuesta) == 0:
+            return 'No hay datos'
+        return respuesta
     else:
         return 'No hay datos'
