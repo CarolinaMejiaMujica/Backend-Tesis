@@ -1,5 +1,5 @@
 from bokeh.core.property.primitive import Null
-from fastapi import APIRouter
+from fastapi import APIRouter,Response
 import numpy as np
 from config.db import conn
 import json
@@ -22,12 +22,26 @@ from bokeh.transform import factor_cmap, factor_mark
 from bokeh.models import Legend, LegendItem
 from models.variantes import variantes
 import mpld3
+import os
+import boto3
+from botocore.exceptions import ClientError
 
 agrupamiento = APIRouter()
 
 todos =['Amazonas','Áncash','Apurímac','Arequipa','Ayacucho','Cajamarca','Callao','Cusco',
     'Huancavelica','Huánuco','Ica','Junín','La Libertad','Lambayeque','Lima','Loreto','Madre de Dios',
     'Moquegua','Pasco','Piura','Puno','San Martín','Tacna','Tumbes','Ucayali']
+
+access_key='ASIAQIMIDAYLIAIJRBIL'
+access_secret='vjgDk5H3jn/F1XXexLV7QmYrj5J6ixn5PF7WylPx'
+session_token='FwoGZXIvYXdzEJj//////////wEaDJdI37aw9RJ4l7oC4CLJAVZZs7wb9n+y4VVRZa+4Cvj9wE6lsYvLotoBYOrgxzogHeW0AkWdBjEkGV3NqKMTvmtS8TO4wJYgY2KfXd31yO2tqzYuheKVSNM5AawoD9MeEG+gAFMNRuTTzQyFJ/HcqnT5XnHgNL0EYHjB1wT4vIYcZv4fDX3NNupxA0XfR1cr2XknID+B+QZ2DYdPYz64DHdm4o4OryNkszt6B3E/Hm+mE1WUXDyDmPts1ckkRd097mJqLlVQnNg69020v3OayQLPGpq7mBjuqiiSxL2MBjItG7OAX5e+3U2sn8SQk1CBffj6zkjjnuh37KJrI/YMGWPUY8Q45JOZYlqlCEov'
+bucket_name='dendrograma'
+client_s3=boto3.client(
+    's3',
+    aws_access_key_id=access_key,
+    aws_secret_access_key=access_secret,
+    aws_session_token=session_token
+)
 
 def data_secuencias(ini,fin,deps,algoritmo,parametro):
     if len(deps) == 1:
@@ -183,7 +197,6 @@ def graficokmeans(fechaIni: str,fechaFin: str,parametro: int,deps: List[str]):
         tabla= tablaagrupamiento(fechaIni,fechaFin,result,nombre_algoritmo,parametro)
         return json.dumps(json_item(plot, "graficokmeans")),tabla
 
-
 @agrupamiento.post("/graficojerarquico/")
 def graficojerarquico(fechaIni: str,fechaFin: str,deps: List[str],parametro: int):
     nombre_algoritmo="'jerarquico'"
@@ -264,21 +277,26 @@ def dendrograma(fechaIni: str,fechaFin: str,deps: List[str]):
     if str(matriz_distancias) == 'No hay datos':
         return 'No hay datos'
     else:
+        #sacar de bd las secuencias obtenidas con los filtros y obtener solo la secuencia alineada
+        #convertir esas secuencias en una matriz y arreglos de string
+        #calcular la distancia condesanda
+        #distancia_condensada
         df1=pd.DataFrame(matriz_distancias)
         Z = linkage(df1, 'ward')
-        fig1=plt.figure(figsize=(10, 5))
-        plt.title('Dendrograma de agrupamiento jerárquico')
+        fig1=plt.figure(figsize=(10, 10))
         plt.xlabel('Índices')
         plt.ylabel('Distancia (Ward)')
+        ax=plt.gca()
+        ax.get_xaxis().set_visible(False)
         dendrogram(Z, labels=df1.index, leaf_rotation=90)
-        html_dendrograma = mpld3.fig_to_html(fig1)
-
-        #fig = plt.figure()
-        #tmpfile = BytesIO()
-        #fig.savefig(tmpfile, format='png')
-        #encoded = base64.b64encode(tmpfile.getvalue()).decode('utf-8')
-        #html = '<img src=\'data:image/png;base64,{}\'>'.format(encoded)
-        return html_dendrograma
+        plt.savefig('dendrograma.png')
+        data_file_folder=os.path.join(os.getcwd())
+        for file in os.listdir(data_file_folder):
+            if file.startswith('d'):
+                try:
+                    client_s3.upload_file(os.path.join(data_file_folder,file),bucket_name,file)
+                except ClientError as e:
+                    print(e)
 
 #DBSCAN
 @agrupamiento.post("/graficodbscan/")

@@ -69,7 +69,6 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                 if m not in fechas_variante:
                     df_secu=df_secu.append(pd.Series([0, m, v,df_secu.loc[df_secu['variante']==v]['color'].iloc[0]], index=df_secu.columns),ignore_index=True)
 
-        ####Nueva versión############
         df_secu['fecha'] = pd.to_datetime(df_secu['fecha'])
 
         df_secuencias = pd.DataFrame()
@@ -91,8 +90,6 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                 df.reset_index(inplace=True, drop=False)
                 df_secuencias = pd.concat([df_secuencias, df])
 
-        #####################################
-
         p = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save",plot_width=1450, plot_height=700, x_axis_type="datetime")
 
         hover=HoverTool(tooltips=[('Fecha de recolección', '@fecha{%d-%m-%Y}'),
@@ -100,11 +97,6 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
                                 ("Variante",'@variante'),
                                 ("Color","$variante $swatch:color")],formatters={'@fecha': 'datetime'})
         p.add_tools(hover)
-
-        #for name,color in zip(variantes,colores):
-        #    df = pd.DataFrame(df_secu.loc[df_secu['variante']==name].sort_values('fecha')).reset_index(drop=True)
-        #    p.line('fecha','count',source=df, line_width=2, color=color, alpha=0.8,
-        #        muted_color=color, muted_alpha=0.2, legend_label=name)
 
         count=0
         temporal=pd.DataFrame()
@@ -164,10 +156,10 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
         data['angulo'] = data['count']/data['count'].sum()*2*pi
         data['porcentaje'] = round(data['count']/data['count'].sum()*100,2)
 
-        p = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save",plot_width=700, plot_height=600,
+        p = figure(tools="pan,zoom_in,zoom_out,undo,redo,reset,save",plot_width=700, plot_height=430,
                 tooltips=[("Variante","@variante"),("Porcentaje","@porcentaje{1.11} %"), ("Cantidad","@count")])
 
-        p.wedge(x=0, y=1, radius=0.8,
+        p.wedge(x=0, y=1, radius=0.5,
                 start_angle=cumsum('angulo', include_zero=True), end_angle=cumsum('angulo'),
                 line_color="white", fill_color='color', legend_field='variante', source=data)
 

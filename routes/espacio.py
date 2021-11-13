@@ -17,9 +17,7 @@ todos =['Amazonas','Áncash','Apurímac','Arequipa','Ayacucho','Cajamarca','Call
     'Moquegua','Pasco','Piura','Puno','San Martín','Tacna','Tumbes','Ucayali']
 
 @espacio.post("/mapa/")
-def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
-    #if 'Todos' in deps:
-    #    deps.remove('Todos')
+def graficoMapa(fechaIni: str,fechaFin: str,deps: List[str]):
     if len(deps)==25:
         deps=todos
     elif 'Todos' in deps:
@@ -144,7 +142,7 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
         return json.dumps(json_item(fig, "mapa"))
 
 @espacio.post("/tablaespacio/")
-def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
+def tabla(fechaIni: str,fechaFin: str,deps: List[str]):
     if len(deps)==25:
         deps=todos
     elif 'Todos' in deps:
@@ -182,3 +180,16 @@ def grafico(fechaIni: str,fechaFin: str,deps: List[str]):
         return respuesta
     else:
         return 'No hay datos'
+
+@espacio.post("/cantidadtotal/")
+def cantidades():
+    #archiv=conn.execute(f"select archivo from archivos where nombre=\'cantidad total\';").fetchall()
+    ##cantidadTotal = pickle.loads(archiv[0][0])
+    #return cantidadTotal
+    return 9150
+
+@espacio.post("/cantidadanalisis/")
+def cantidades():
+    archiv=conn.execute(f"select count(*) from secuencias where estado=1;").fetchall()
+    cantidadAnalisis = archiv[0][0]
+    return cantidadAnalisis
