@@ -36,45 +36,49 @@ diccionario = {'AMA' : 'Amazonas','ANC' : 'Áncash','APU' : 'Apurímac','ARE' : 
                'CAL' : 'Callao', 'C01' : 'Callao', 'C02': 'Callao','C03': 'Callao'}
 
 def matriz_secuencias_recuperado():
-    archiv=conn.execute(f"select matriz_secuencias from archivos where id_archivo=2;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'matriz secuencias\';").fetchall()
+    return pickle.loads(archiv[0][0])
+
+def distancia_condensada():
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'distancia condensada\';").fetchall()
     return pickle.loads(archiv[0][0])
 
 def matriz_distancias_recuperado():
-    archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=3;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'matriz distancias\';").fetchall()
     return pickle.loads(archiv[0][0])
 
 def mds_recuperado():
-    archiv=conn.execute(f"select mds from archivos where id_archivo=4;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'modelo mds\';").fetchall()
     return pickle.loads(archiv[0][0])
 
 def matriz_mds_recuperado():
-    archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=4;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'matriz mds\';").fetchall()
     return pickle.loads(archiv[0][0])
 
 def pca_recuperado():
-    archiv=conn.execute(f"select pca from archivos where id_archivo=5;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'modelo pca\';").fetchall()
     return pickle.loads(archiv[0][0])
 
 def matriz_pca_recuperado():
-    archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=5;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'x pca\';").fetchall()
     return pickle.loads(archiv[0][0])
 
 def landmark_recuperado():
-    archiv=conn.execute(f"select landmark from archivos where id_archivo=6;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'landmark\';").fetchall()
     return pickle.loads(archiv[0][0])
 
 def array_landmark_recuperado():
-    archiv=conn.execute(f"select puntos_antiguos from archivos where id_archivo=6;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'array landmark\';").fetchall()
     return pickle.loads(archiv[0][0])
 
 '''def modelo_recuperado():
-    archiv=conn.execute(f"select modelo from archivos where id_archivo=7;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'red neuronal\';).fetchall()
     modelo_bd = pickle.loads(archiv[0][0])
     modelo_recuperado = model_from_json(modelo_bd)
     return modelo_recuperado'''
 
 def puntos_antiguos_recuperado():
-    archiv=conn.execute(f"select puntos_antiguos from archivos where id_archivo=8;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'puntos antiguos\';").fetchall()
     return pickle.loads(archiv[0][0])
 
 #Función de lectura de las secuencias
@@ -305,7 +309,6 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
         return True
     except FileNotFoundError:
         return False
-
 
 
 @online.post("/eliminar/")

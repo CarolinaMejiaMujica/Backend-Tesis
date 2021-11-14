@@ -74,7 +74,7 @@ def data_secuencias(ini,fin,deps,algoritmo,parametro):
     else:
         df_secu.columns=['codigo','fecha', 'departamento', 'variante_predominante','color','cluster','linaje','variante','estado']
         #Recuperar archivo pca de BD
-        archiv=conn.execute(f"select puntos_antiguos from archivos where id_archivo=8;").fetchall()
+        archiv=conn.execute(f"select archivo from archivos where nombre=\'puntos antiguos\';").fetchall()
         X_pca = pickle.loads(archiv[0][0])
         df_secu['x']=X_pca[0:len(df_secu),0]
         df_secu['y']=X_pca[0:len(df_secu),1]
@@ -115,7 +115,7 @@ def data_secuencias_dbscan(ini,fin,deps,algoritmo,parametro):
     else:
         df_secu.columns=['codigo','fecha', 'departamento', 'variante_predominante','color','cluster','linaje','variante','estado']
         #Recuperar archivo pca de BD
-        archiv=conn.execute(f"select puntos_antiguos from archivos where id_archivo=8;").fetchall()
+        archiv=conn.execute(f"select archivo from archivos where nombre=\'puntos antiguos\';").fetchall()
         X_pca = pickle.loads(archiv[0][0])
         df_secu['x']=X_pca[0:len(df_secu),0]
         df_secu['y']=X_pca[0:len(df_secu),1]
@@ -277,10 +277,6 @@ def dendrograma(fechaIni: str,fechaFin: str,deps: List[str]):
     if str(matriz_distancias) == 'No hay datos':
         return 'No hay datos'
     else:
-        #sacar de bd las secuencias obtenidas con los filtros y obtener solo la secuencia alineada
-        #convertir esas secuencias en una matriz y arreglos de string
-        #calcular la distancia condesanda
-        #distancia_condensada
         df1=pd.DataFrame(matriz_distancias)
         Z = linkage(df1, 'ward')
         fig1=plt.figure(figsize=(10, 10))

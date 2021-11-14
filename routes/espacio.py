@@ -1,4 +1,6 @@
+import pickle
 from fastapi import APIRouter, Response
+from starlette.responses import JSONResponse
 from config.db import conn
 from models.departamentos import departamentos
 import json
@@ -181,15 +183,10 @@ def tabla(fechaIni: str,fechaFin: str,deps: List[str]):
     else:
         return 'No hay datos'
 
-@espacio.post("/cantidadtotal/")
+@espacio.post("/cantidades/")
 def cantidades():
-    #archiv=conn.execute(f"select archivo from archivos where nombre=\'cantidad total\';").fetchall()
-    ##cantidadTotal = pickle.loads(archiv[0][0])
-    #return cantidadTotal
-    return 9150
-
-@espacio.post("/cantidadanalisis/")
-def cantidades():
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'cantidad total\';").fetchall()
+    cantidadTotal = pickle.loads(archiv[0][0])
     archiv=conn.execute(f"select count(*) from secuencias where estado=1;").fetchall()
     cantidadAnalisis = archiv[0][0]
-    return cantidadAnalisis
+    return JSONResponse(content={"cantidadTotal":cantidadTotal,"cantidadAnalisis":cantidadAnalisis})
