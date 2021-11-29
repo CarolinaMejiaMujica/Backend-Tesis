@@ -259,7 +259,7 @@ def graficojerarquico(fechaIni: str,fechaFin: str,deps: List[str],parametro: int
 
 #DENDROGRAMA
 def obtenermatrizdistancia(fechaIni,fechaFin,deps):
-    archiv=conn.execute(f"select matriz_distancia from archivos where id_archivo=3;").fetchall()
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'matriz distancias\';").fetchall()
     if archiv == Null:
         return 'No hay datos'
     else:
