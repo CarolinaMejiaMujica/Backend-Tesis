@@ -14,7 +14,7 @@ from models.archivos import archivos
 from Bio.Align import MultipleSeqAlignment
 from datetime import date
 from scipy.spatial.distance import hamming
-#from keras.models import model_from_json
+from keras.models import model_from_json
 import psycopg2
 conexion = psycopg2.connect("dbname='BDTesis' user='postgres' host='instanciatesis.cjfczpppafxb.us-east-1.rds.amazonaws.com' password='carolina19620'")
 cur = conexion.cursor()
@@ -71,11 +71,11 @@ def array_landmark_recuperado():
     archiv=conn.execute(f"select archivo from archivos where nombre=\'array landmark\';").fetchall()
     return pickle.loads(archiv[0][0])
 
-'''def modelo_recuperado():
-    archiv=conn.execute(f"select archivo from archivos where nombre=\'red neuronal\';).fetchall()
+def modelo_recuperado():
+    archiv=conn.execute(f"select archivo from archivos where nombre=\'red neuronal\';").fetchall()
     modelo_bd = pickle.loads(archiv[0][0])
     modelo_recuperado = model_from_json(modelo_bd)
-    return modelo_recuperado'''
+    return modelo_recuperado
 
 def puntos_antiguos_recuperado():
     archiv=conn.execute(f"select archivo from archivos where nombre=\'puntos antiguos\';").fetchall()
@@ -92,6 +92,7 @@ def lectura(registros):
     fechas_1=list() #Lista de las fechas
     secuencias_1=list() #Lista de las secuencias
     secuenciasEliminadas_1=list() #Lista de las secuencias eliminadas
+    cant=0
     for i in range(len(registros)):
         name=registros[i].id
         #Obtener la abreviación del nombre del departamento
@@ -115,7 +116,8 @@ def lectura(registros):
                 secuenciasEliminadas_1.append(registros[i])
                 continue
             else:
-                if not codigo in codigos:
+                if ((not str(codigo) in codigos) and (cant<2)):
+                    print(codigo)
                     fecha=valor['year'] + '-' + valor['month'] + '-' + valor['day']
                     #Guardar los datos obtenidos
                     registros[i].name=diccionario[place]
@@ -124,6 +126,7 @@ def lectura(registros):
                     fechas_1.append(fecha)
                     #Guardar la secuencia
                     secuencias_1.append(registros[i])
+                    cant=cant+1
     return secuencias_1
 
 #Función para la Eliminación de las secuencias genómicas SARS-CoV-2 con errores de lectura
@@ -159,11 +162,11 @@ def ham(seq1,seq2):
 #Función que calcula la distancia de las secuencias a cada landmark
 def distancia_landmark(matriz_secuencias_nuevas,matriz_secuencias_antigua):
     landmark =landmark_recuperado()
-    X1 = np.empty((0, 20), int)
+    X1 = np.empty((0, len(landmark)), int)
     for i in range(len(matriz_secuencias_nuevas)):
         fila=[]
         #calcular la distancia de cada punto a los landmark
-        for j in range(20):
+        for j in range(len(landmark)):
             fila.append(np.around(ham(matriz_secuencias_nuevas[i],matriz_secuencias_antigua[landmark[j]]),2))
         X1 = np.append(X1, np.array([fila]), axis=0)
     return X1
@@ -176,22 +179,26 @@ def distancia_hamming(secuenciasAlineadas_nuevas,matriz_secuencias_recuperado):
     nueva_maxlongitud = len(matriz_secuencias_nuevas[0])
 
     if nueva_maxlongitud > antigua_maxlongitud:
-        matriz_secuencias_antigua=np.empty((len(matriz_secuencias_recuperado), nueva_maxlongitud), str)
+        matriz_secuencias_antigua=np.empty((len(matriz_secuencias_recuperado)+1, nueva_maxlongitud), str)
         for i in range(len(matriz_secuencias_recuperado)):
             for j in range(nueva_maxlongitud-antigua_maxlongitud):
                 matriz_secuencias_antigua[i]=np.append(matriz_secuencias_recuperado[i], '.')
         X1=distancia_landmark(matriz_secuencias_nuevas,matriz_secuencias_antigua)
         nuevas_matriz_secuencias=np.append(matriz_secuencias_antigua, matriz_secuencias_nuevas, axis=0)
     else:
+        matriz_secuencias_nuevas2=np.empty((len(matriz_secuencias_nuevas), antigua_maxlongitud), str)
         for i in range(len(matriz_secuencias_nuevas)):
-            matriz_secuencias_nuevas2=np.empty((len(matriz_secuencias_nuevas), antigua_maxlongitud), str)
+            valor=matriz_secuencias_nuevas[i]
             for j in range(antigua_maxlongitud-nueva_maxlongitud):
-                matriz_secuencias_nuevas2[i]=np.append(matriz_secuencias_nuevas[i], '.')
+                valor=np.append(valor, '.')
+            matriz_secuencias_nuevas2[i]=valor
         X1=distancia_landmark(matriz_secuencias_nuevas2,matriz_secuencias_recuperado)
         nuevas_matriz_secuencias=np.append(matriz_secuencias_recuperado, matriz_secuencias_nuevas2, axis=0)
     #Guardar en BD nuevas_matriz_secuencias
     pickle_matriz_secuencias = pickle.dumps(nuevas_matriz_secuencias)
-    conn.execute(archivos.update().where(archivos.c.id_archivo == 2).values(matriz_secuencias=pickle_matriz_secuencias))
+    conn.execute(archivos.update().values(
+        archivo=pickle_matriz_secuencias
+    ).where(archivos.c.nombre=="matriz secuencias"))
     return X1
 
 #Función para guardar datos de las secuencias en BD
@@ -244,12 +251,12 @@ def guardar_datos(secuencias,df_info,secuenciaAlineada):
     array=[]
     for i in range(len(df)):
         id_dep=dic_dep[df.iloc[i]['lugar']]
-        tupla=(df.iloc[i]['id'],str(df.iloc[i]['secuencia']),date.fromisoformat(df.iloc[i]['fecha']),str(df.iloc[i]['secuenciaAlineada']),int(id_dep),str(df.iloc[i]['linaje']),str(df.iloc[i]['variante']))
+        tupla=(df.iloc[i]['id'],str(df.iloc[i]['secuencia']),date.fromisoformat(df.iloc[i]['fecha']),str(df.iloc[i]['secuenciaAlineada']),int(id_dep),str(df.iloc[i]['linaje']),str(df.iloc[i]['variante']),1)
         array.append(tupla)
     
     #INSERTAR EN BD
-    args_str = b','.join(cur.mogrify("(%s,%s,%s,%s,%s,%s,%s)", x) for x in array)
-    cur.execute(b"INSERT INTO public.secuencias(codigo, secuencia, fecha_recoleccion,secuencia_alineada,id_departamento,linaje_pango,variante) VALUES " + args_str)
+    args_str = b','.join(cur.mogrify("(%s,%s,%s,%s,%s,%s,%s,%s)", x) for x in array)
+    cur.execute(b"INSERT INTO public.secuencias(codigo, secuencia, fecha_recoleccion,secuencia_alineada,id_departamento,linaje_pango,variante,estado) VALUES " + args_str)
     conexion.commit()
 
     prueba=pd.DataFrame(conn.execute(f"SELECT id_secuencia, codigo FROM secuencias").fetchall())
@@ -261,7 +268,7 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
     try:
         nombreFasta=archivos[1].filename
         nombreTSV=archivos[0].filename
-        '''for arc in archivos:
+        for arc in archivos:
             with open(arc.filename, "wb") as buffer:
                 shutil.copyfileobj(arc.file, buffer)
         if "fasta" in archivos[0].filename:
@@ -271,16 +278,16 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
         if "tsv" in archivos[0].filename:
             nombreTsv=archivos[0].filename
         elif "tsv" in archivos[1].filename:
-            nombreTsv=archivos[1].filename'''
-        #registros = list(SeqIO.parse(nombreFasta, "fasta"))
-        #df_info = pd.read_csv(nombreTsv,sep='\t')
-        '''secuencias=lectura(registros)
+            nombreTsv=archivos[1].filename
+        registros = list(SeqIO.parse(nombreFasta, "fasta"))
+        df_info = pd.read_csv(nombreTsv,sep='\t')
+        secuencias=lectura(registros)
         secuencias_1=eliminación_secuencias(secuencias)
         alineamiento_valores=alineamiento_multiple(secuencias_1)
         secuenciasAlineadas_nuevas=alineamiento_valores[0]
         secuencias_1=alineamiento_valores[1]
         secuenciaAlineada=alineamiento_valores[2]
-        
+
         #Guardar secuencias en BD
         guardar_datos(secuencias_1,df_info,secuenciaAlineada)
 
@@ -292,20 +299,20 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
             #sin agrupamiento
 
             #GUARDAR DATOS EN BD
-            archiv=conn.execute(f"select puntos_nuevos from archivos where id_archivo=9;").fetchall()
+            archiv=conn.execute(f"select archivo from archivos where nombre=\'puntos nuevos\';").fetchall()
             if archiv:
                 #hay datos
                 valores_nuevos=np.append(archiv, valores1, axis=0)
                 pickle_puntos_nuevos = pickle.dumps(valores_nuevos)
-                conn.execute(archivos.update().where(archivos.c.id_archivo == 9).values(puntos_nuevos=pickle_puntos_nuevos))
+                conn.execute(archivos.update().values(
+                    archivo=pickle_puntos_nuevos
+                ).where(archivos.c.nombre=="puntos nuevos"))
             else:
                 pickle_puntos_nuevos = pickle.dumps(valores1)
-                conn.execute(archivos.insert().values(
-                    puntos_nuevos = pickle_puntos_nuevos
-                ))
+                conn.execute(archivos.insert().values(nombre="puntos nuevos",archivo=pickle_puntos_nuevos))
         else:
             #realizar el agrupamiento de nuevo
-            pass'''
+            pass
         return True
     except FileNotFoundError:
         return False
@@ -315,8 +322,23 @@ async def subir_varios_archivos(parametro: int,archivos: List[UploadFile] = File
 def eliminarSecuencias(codigos: List[str]):
     try:
         args_str = b','.join(cur.mogrify("%s", (x,)) for x in codigos)
+        #Actualizar la tabla de secuencias
         cur.execute(b"UPDATE secuencias SET estado = 0 WHERE codigo = " + args_str)
         conexion.commit()
+        lista=tuple(codigos)
+        #Actualizar el archivo con las posiciones en dos dimensiones
+        puntos_antiguos = puntos_antiguos_recuperado()
+        lista=('EPI_ISL_5146999','EPI_ISL_1111291','EPI_ISL_1111293')
+        ids=conn.execute(f"select id_secuencia from secuencias where codigo in "+ str(lista)+ ";").fetchall()
+        for i in ids:
+            indice=i[0]
+            puntos_antiguos=np.delete(puntos_antiguos, indice, axis=0)
+        #Actualizar el archivo de puntos antiguos
+        pickle_puntos_antiguos = pickle.dumps(puntos_antiguos)
+        conn.execute(archivos.update().values(
+            nombre = "puntos antiguos",
+            archivo=pickle_puntos_antiguos
+        ).where(archivos.c.id_archivo==11))
         table=tabla()
         return True,table
     except:
