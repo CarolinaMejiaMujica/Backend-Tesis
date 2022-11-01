@@ -1,19 +1,16 @@
 from sqlalchemy import create_engine, MetaData
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine.url import URL
-
-#DATABASE_URL = "mysql+mysqlconnector://admin:carolina19620@localhost:3306/BDTesis"
-
-#driver = 'mysql+pymysql'
-
-#url = URL(driver, 'admin', 'carolina19620', 'instancetesis.ci9voqbe9ybk.us-east-1.rds.amazonaws.com', '3306', 'BDTesis')
 
 driver='postgresql'
 
-url = URL(driver, 'postgres', 'carolina19620', 'database-1.cyhgeckpzqtt.us-east-1.rds.amazonaws.com', '5432', 'BDTesis')
-
-
-engine = create_engine(url)
+url = URL(driver, 'rlnivuldeinkhw', '3a0520892729385ad451ea12c8f120ebd261508942aa67af6a5374eab95087ef', 'ec2-34-227-135-211.compute-1.amazonaws.com', '5432', 'd9h8eju0ocjc4h')
+engine = create_engine(url,
+            pool_pre_ping=True,
+            connect_args={
+                "keepalives": 8,
+                "keepalives_idle": 50,
+                "keepalives_interval": 50,
+                "keepalives_count": 50,
+            })
 meta = MetaData()
 conn = engine.connect()

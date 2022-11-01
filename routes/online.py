@@ -16,7 +16,8 @@ from datetime import date
 from scipy.spatial.distance import hamming
 from keras.models import model_from_json
 import psycopg2
-conexion = psycopg2.connect("dbname='BDTesis' user='postgres' host='instanciatesis.cjfczpppafxb.us-east-1.rds.amazonaws.com' password='carolina19620'")
+
+conexion = psycopg2.connect("dbname='d9h8eju0ocjc4h' user='rlnivuldeinkhw' host='ec2-34-227-135-211.compute-1.amazonaws.com' password='3a0520892729385ad451ea12c8f120ebd261508942aa67af6a5374eab95087ef'")
 cur = conexion.cursor()
 
 online = APIRouter()
